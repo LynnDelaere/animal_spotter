@@ -1,0 +1,2 @@
+# Architecture Overview
+The Animal Spotter application is built using a microservices architecture, leveraging Docker containers for easy deployment and scalability. The core components of the architecture include:

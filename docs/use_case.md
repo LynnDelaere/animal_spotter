@@ -1,0 +1,2 @@
+# Animal Spotter 
+Animal Spotter is an application designed to identify and classify various animals using advanced machine learning techniques. This document outlines the use cases, features, and benefits of the Animal Spotter application.
