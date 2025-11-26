@@ -13,13 +13,13 @@ import fiftyone.zoo as foz
 from minio import Minio
 
 
-
 # Bucket name and prefix for datasets
 BUCKET_NAME = "datasets"
 BUCKET_PREFIX = "openimages_animals/raw/v1"
 
 # Local dataset path
 EXPORT_DIR = (ROOT_DIR / "data" / "openimages_animals").resolve()
+
 
 # Function to create MinIO client
 def get_minio_client() -> Minio:
@@ -28,14 +28,20 @@ def get_minio_client() -> Minio:
     minio_root_user = os.getenv("MINIO_ROOT_USER")
     minio_root_password = os.getenv("MINIO_ROOT_PASSWORD")
 
-    is_missing = [name for name, value in [
-        ("MINIO_ENDPOINT", minio_endpoint),
-        ("MINIO_ROOT_USER", minio_root_user),
-        ("MINIO_ROOT_PASSWORD", minio_root_password),
-    ] if not value]
+    is_missing = [
+        name
+        for name, value in [
+            ("MINIO_ENDPOINT", minio_endpoint),
+            ("MINIO_ROOT_USER", minio_root_user),
+            ("MINIO_ROOT_PASSWORD", minio_root_password),
+        ]
+        if not value
+    ]
 
     if is_missing:
-        raise EnvironmentError(f"Missing required environment variables: {', '.join(is_missing)}")
+        raise EnvironmentError(
+            f"Missing required environment variables: {', '.join(is_missing)}"
+        )
 
     return Minio(
         endpoint=minio_endpoint,
@@ -43,6 +49,7 @@ def get_minio_client() -> Minio:
         secret_key=minio_root_password,
         secure=False,
     )
+
 
 # Function to download the dataset
 def download_dataset(max_samples: int = 300) -> fo.Dataset:
@@ -55,6 +62,7 @@ def download_dataset(max_samples: int = 300) -> fo.Dataset:
         max_samples=max_samples,
     )
     return dataset
+
 
 # Function to export dataset to local directory
 def export_dataset_local(dataset: fo.Dataset, export_dir: Path = EXPORT_DIR) -> Path:
@@ -78,26 +86,29 @@ def bucket_exists(minio_client: Minio, bucket_name: str) -> None:
     else:
         print(f"Bucket {bucket_name} already exists")
 
+
 # Function to upload dataset to MinIO
 def upload_dataset_minio(
-        client: Minio,
-        bucket_name: str,
-        bucket_prefix: str,
-        export_dir: Path = EXPORT_DIR,
+    client: Minio,
+    bucket_name: str,
+    bucket_prefix: str,
+    export_dir: Path = EXPORT_DIR,
 ) -> int:
     """Upload the dataset files to MinIO.
     Returns the number of files uploaded.
     """
-    print(f"Uploading files from {export_dir} to bucket {bucket_name} with prefix {bucket_prefix}")
+    print(
+        f"Uploading files from {export_dir} to bucket {bucket_name} with prefix {bucket_prefix}"
+    )
     count = 0
     for file_path in export_dir.rglob("*"):
         if file_path.is_file():
             relative_path = file_path.relative_to(export_dir).as_posix()
             object_name = f"{bucket_prefix}/{relative_path}"
             client.fput_object(
-                bucket_name = bucket_name,
-                object_name = object_name,
-                file_path = str(file_path),
+                bucket_name=bucket_name,
+                object_name=object_name,
+                file_path=str(file_path),
             )
             count += 1
             if count % 50 == 0:
@@ -105,6 +116,7 @@ def upload_dataset_minio(
 
     print(f"Finished uploading {count} files to bucket {bucket_name}")
     return count
+
 
 def main() -> None:
     """Main function to download, export, and upload dataset."""
@@ -127,6 +139,7 @@ def main() -> None:
         bucket_prefix=BUCKET_PREFIX,
         export_dir=export_dir,
     )
+
 
 if __name__ == "__main__":
     main()
