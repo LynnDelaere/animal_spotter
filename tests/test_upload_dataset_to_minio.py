@@ -12,6 +12,7 @@ from src.data.upload_dataset_to_minio import get_minio_client, upload_dataset_mi
 
 class FakeMinio:
     """Simple fake Minio client for testing purposes."""
+
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
@@ -30,6 +31,7 @@ class FakeMinio:
         assert Path(file_path).is_file()
         self.uploaded.append((bucket_name, object_name, file_path))
 
+
 def test_get_minio_client_raises_env_error(monkeypatch):
     """Test that get_minio_client raises an error if env vars are missing."""
     monkeypatch.delenv("MINIO_ENDPOINT", raising=False)
@@ -38,6 +40,7 @@ def test_get_minio_client_raises_env_error(monkeypatch):
     monkeypatch.delenv("MINIO_ROOT_PASSWORD", raising=False)
 
     from src.data import upload_dataset_to_minio as upload_module
+
     # The current implementation raises ValueError when required env vars are missing
     with pytest.raises(EnvironmentError) as exinfo:
         upload_module.get_minio_client()
@@ -46,6 +49,7 @@ def test_get_minio_client_raises_env_error(monkeypatch):
     assert "MINIO_ENDPOINT" in msg
     assert "MINIO_ROOT_USER" in msg
     assert "MINIO_ROOT_PASSWORD" in msg
+
 
 def test_upload_export_dir_to_minio(tmp_path):
     """Test uploading files from export_dir to MinIO."""
@@ -80,7 +84,7 @@ def test_upload_export_dir_to_minio(tmp_path):
     expected_uploads = sorted(obj[1] for obj in fake_minio.uploaded)
     assert expected_uploads == [
         f"{prefix}/image1.jpg",
-        f"{prefix}/subdir/label1.txt", 
+        f"{prefix}/subdir/label1.txt",
     ]
 
     # Check the bucket names
