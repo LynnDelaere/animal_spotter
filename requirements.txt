@@ -1,0 +1,4 @@
+# Core dependencies
+fiftyone
+minio
+pyyaml
