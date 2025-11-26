@@ -12,7 +12,6 @@ import fiftyone as fo
 import fiftyone.zoo as foz
 from minio import Minio
 
-
 # Bucket name and prefix for datasets
 BUCKET_NAME = "datasets"
 BUCKET_PREFIX = "openimages_animals/raw/v1"
