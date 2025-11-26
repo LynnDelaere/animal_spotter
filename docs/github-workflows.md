@@ -55,59 +55,10 @@ Set the following settings:
     - `format-and-lint` (from Code Quality workflow)
     - `test` (from Tests workflow)
     - `docker-build-test` (from Docker Build workflow)
-    - `dependency-scan` (from Security Scan workflow)
-
-#### Additional Settings
-- ✅ **Require conversation resolution before merging**
-- ✅ **Require signed commits** (recommended for security)
-- ✅ **Require linear history** (optional, prevents merge commits)
-- ✅ **Include administrators** (apply rules to admins too)
-- ✅ **Allow force pushes**: ❌ (disabled)
-- ✅ **Allow deletions**: ❌ (disabled)
 
 ### Step 3: Save Changes
 Click **Create** or **Save changes** at the bottom.
 
-### Step 4: Repeat for `develop` Branch (if applicable)
-If you use a `develop` branch, repeat the same process with slightly relaxed rules if needed.
-
-## Local Development Setup
-
-### Install Pre-commit Hooks (Recommended)
-Pre-commit hooks run checks before each commit, catching issues early:
-
-```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install the git hooks
-pre-commit install
-
-# (Optional) Run checks on all files
-pre-commit run --all-files
-```
-
-### Install Development Dependencies
-```bash
-pip install -r requirements-dev.txt
-```
-
-### Manual Formatting
-```bash
-# Format code
-black .
-isort .
-
-# Check formatting (no changes)
-black --check .
-isort --check .
-
-# Lint code
-flake8 .
-
-# Type check
-mypy src/
-```
 
 ## Workflow Behavior
 
@@ -117,9 +68,8 @@ mypy src/
 3. If formatting is wrong, the workflow will auto-commit fixes (for PR branches only)
 4. Review the auto-committed changes and push if needed
 
-### On Push to Main/Develop
+### On Push to Main
 1. All workflows run to verify the merged code
-2. Weekly security scans continue to monitor for new vulnerabilities
 
 ## Testing the Setup
 
