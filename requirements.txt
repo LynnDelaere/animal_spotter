@@ -4,7 +4,7 @@ anyio==4.11.0
 argcomplete==3.6.3
 argon2-cffi==25.1.0
 argon2-cffi-bindings==25.1.0
-array_record==0.8.3
+array_record==0.8.1
 astunparse==1.6.3
 async-lru==2.0.5
 attrs==25.4.0
