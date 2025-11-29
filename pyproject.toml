@@ -41,9 +41,16 @@ python_functions = ["test_*"]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false
 ignore_missing_imports = true
-no_strict_optional = true
+disallow_untyped_defs = true
+no_strict_optional = false
+warn_unused_ignores = true
+show_error_codes = true
+strict_equality = true
+
+# Gradual strictness plan:
+# Later phases can enable: disallow_untyped_defs=true, disallow_incomplete_defs=true,
+# and remove ignore_missing_imports as stubs/types added.
 
 # Coverage configuration
 [tool.coverage.run]
@@ -58,3 +65,49 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+indent-width = 4
+exclude = [".venv", "build", "dist"]
+src = ["src", "tests"]
+fix = true
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP",
+  "SIM",
+  "C90"
+]
+ignore = [
+  "E203",
+  "W291",
+  "W293"
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+
+[tool.pydocstyle]
+convention = "google"
+match-dir = "(?!tests)"  # skip tests for now
+
+[tool.interrogate]
+verbose = 1
+fail-under = 50
+exclude = [".venv", "tests"]
+ignore-init-module = true
+ignore-nested-functions = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-private = true
