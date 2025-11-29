@@ -1,12 +1,12 @@
 """Dataset upload utilities for MinIO.
 
-Provides functions to download, export, and upload FiftyOne datasets to MinIO storage.
+This script uploads the locally downloaded OpenImages dataset (raw files)
+to MinIO storage. It assumes the data has already been downloaded using
+src/data/download_dataset_raw.py.
 """
 
 from pathlib import Path
 
-import fiftyone as fo
-import fiftyone.zoo as foz
 from minio import Minio
 
 from src.data.minio_datamanagement import bucket_exists, get_minio_client
@@ -18,32 +18,6 @@ BUCKET_PREFIX = "openimages_animals/raw/v1"
 # Local dataset path
 ROOT_DIR = Path(__file__).resolve().parents[2]
 EXPORT_DIR = (ROOT_DIR / "data" / "openimages_animals").resolve()
-
-
-# Function to download the dataset
-def download_dataset(max_samples: int = 300) -> fo.Dataset:
-    """Download the Open Images dataset with specified parameters."""
-    print("Downloading dataset from FiftyOne")
-    dataset = foz.load_zoo_dataset(
-        "open-images-v7",
-        label_types=["classifications", "detections"],
-        classes=["Animal"],
-        max_samples=max_samples,
-    )
-    return dataset
-
-
-# Function to export dataset to local directory
-def export_dataset_local(dataset: fo.Dataset, export_dir: Path = EXPORT_DIR) -> Path:
-    """Export the dataset to the specified local directory."""
-    export_dir.mkdir(parents=True, exist_ok=True)
-    dataset.export(
-        export_dir=str(export_dir),
-        dataset_type=fo.types.FiftyOneDataset,
-        overwrite=True,
-    )
-    print(f"Dataset exported to {export_dir}")
-    return export_dir
 
 
 # Function to upload dataset to MinIO
@@ -64,42 +38,51 @@ def upload_dataset_minio(
     count = 0
     for file_path in export_dir.rglob("*"):
         if file_path.is_file():
+            if file_path.name.startswith("."):
+                continue  # Skip hidden files
             relative_path = file_path.relative_to(export_dir).as_posix()
             object_name = f"{bucket_prefix}/{relative_path}"
-            client.fput_object(
-                bucket_name=bucket_name,
-                object_name=object_name,
-                file_path=str(file_path),
-            )
-            count += 1
-            if count % 50 == 0:
-                print(f"Uploaded {count} files...")
+            try:
+                client.fput_object(
+                    bucket_name=bucket_name,
+                    object_name=object_name,
+                    file_path=str(file_path),
+                )
+                count += 1
+                if count % 100 == 0:
+                    print(f"Uploaded {count} files...")
+
+            except Exception as e:
+                print(f"Error uploading {file_path} to {object_name}: {e}")
 
     print(f"Finished uploading {count} files to bucket {bucket_name}")
     return count
 
 
 def main() -> None:
-    """Main function to download, export, and upload dataset."""
-    # Create MinIO client
-    minio_client = get_minio_client()
+    """Main function to validate dataset presence and upload it to MinIO."""
+    if not EXPORT_DIR.exists() or not any(EXPORT_DIR.iterdir()):
+        raise FileNotFoundError(
+            f"Export directory {EXPORT_DIR} does not exist or is empty. "
+            "Please download the dataset first using "
+            "`src/data/download_dataset_raw.py`."
+        )
+    try:
+        # Create MinIO client
+        minio_client = get_minio_client()
 
-    # Ensure bucket exists
-    bucket_exists(minio_client, BUCKET_NAME)
+        # Ensure bucket exists
+        bucket_exists(minio_client, BUCKET_NAME)
 
-    # Download dataset
-    dataset = download_dataset(max_samples=300)
-
-    # Export dataset locally
-    export_dir = export_dataset_local(dataset, EXPORT_DIR)
-
-    # Upload dataset to MinIO
-    upload_dataset_minio(
-        client=minio_client,
-        bucket_name=BUCKET_NAME,
-        bucket_prefix=BUCKET_PREFIX,
-        export_dir=export_dir,
-    )
+        # Upload dataset to MinIO
+        upload_dataset_minio(
+            client=minio_client,
+            bucket_name=BUCKET_NAME,
+            bucket_prefix=BUCKET_PREFIX,
+            export_dir=EXPORT_DIR,
+        )
+    except Exception as e:
+        print(f"Error during dataset upload: {e}")
 
 
 if __name__ == "__main__":
