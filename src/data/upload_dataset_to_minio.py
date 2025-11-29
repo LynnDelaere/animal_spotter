@@ -1,53 +1,16 @@
-import os
 from pathlib import Path
-
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-ROOT_DIR = Path(__file__).resolve().parents[2]
-dotenv_path = ROOT_DIR / ".env"
-load_dotenv(dotenv_path=dotenv_path, override=False)
-
 import fiftyone as fo
 import fiftyone.zoo as foz
 from minio import Minio
+from src.data.minio_datamanagement import get_minio_client, bucket_exists
 
 # Bucket name and prefix for datasets
 BUCKET_NAME = "datasets"
 BUCKET_PREFIX = "openimages_animals/raw/v1"
 
 # Local dataset path
+ROOT_DIR = Path(__file__).resolve().parents[2]
 EXPORT_DIR = (ROOT_DIR / "data" / "openimages_animals").resolve()
-
-
-# Function to create MinIO client
-def get_minio_client() -> Minio:
-    """Create and return a MinIO client using environment variables."""
-    minio_endpoint = os.getenv("MINIO_ENDPOINT")
-    minio_root_user = os.getenv("MINIO_ROOT_USER")
-    minio_root_password = os.getenv("MINIO_ROOT_PASSWORD")
-
-    is_missing = [
-        name
-        for name, value in [
-            ("MINIO_ENDPOINT", minio_endpoint),
-            ("MINIO_ROOT_USER", minio_root_user),
-            ("MINIO_ROOT_PASSWORD", minio_root_password),
-        ]
-        if not value
-    ]
-
-    if is_missing:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(is_missing)}"
-        )
-
-    return Minio(
-        endpoint=minio_endpoint,
-        access_key=minio_root_user,
-        secret_key=minio_root_password,
-        secure=False,
-    )
 
 
 # Function to download the dataset
@@ -74,16 +37,6 @@ def export_dataset_local(dataset: fo.Dataset, export_dir: Path = EXPORT_DIR) -> 
     )
     print(f"Dataset exported to {export_dir}")
     return export_dir
-
-
-# Function to ensure bucket exists
-def bucket_exists(minio_client: Minio, bucket_name: str) -> None:
-    """Ensure the specified bucket exists in MinIO."""
-    if not minio_client.bucket_exists(bucket_name=bucket_name):
-        print(f"Creating bucket: {bucket_name}")
-        minio_client.make_bucket(bucket_name=bucket_name)
-    else:
-        print(f"Bucket {bucket_name} already exists")
 
 
 # Function to upload dataset to MinIO

@@ -1,15 +1,16 @@
-import os
 import sys
 from pathlib import Path
-
 import pytest
 
+# Ensure src is in sys.path for imports
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.data.upload_dataset_to_minio import get_minio_client, upload_dataset_minio
+# Import the function to be tested
+from src.data.upload_dataset_to_minio import upload_dataset_minio
 
 
+# A simple fake Minio client for testing purposes
 class FakeMinio:
     """Simple fake Minio client for testing purposes."""
 
@@ -30,25 +31,6 @@ class FakeMinio:
         # Simulate uploading by just printing
         assert Path(file_path).is_file()
         self.uploaded.append((bucket_name, object_name, file_path))
-
-
-def test_get_minio_client_raises_env_error(monkeypatch):
-    """Test that get_minio_client raises an error if env vars are missing."""
-    monkeypatch.delenv("MINIO_ENDPOINT", raising=False)
-    # The implementation expects these variable names
-    monkeypatch.delenv("MINIO_ROOT_USER", raising=False)
-    monkeypatch.delenv("MINIO_ROOT_PASSWORD", raising=False)
-
-    from src.data import upload_dataset_to_minio as upload_module
-
-    # The current implementation raises ValueError when required env vars are missing
-    with pytest.raises(EnvironmentError) as exinfo:
-        upload_module.get_minio_client()
-
-    msg = str(exinfo.value)
-    assert "MINIO_ENDPOINT" in msg
-    assert "MINIO_ROOT_USER" in msg
-    assert "MINIO_ROOT_PASSWORD" in msg
 
 
 def test_upload_export_dir_to_minio(tmp_path):
