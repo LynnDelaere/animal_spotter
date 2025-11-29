@@ -1,6 +1,9 @@
 """Tests for MinIO data management functionality."""
 
+from typing import cast
+
 import pytest
+from minio import Minio
 from src.data.upload_dataset_to_minio import bucket_exists, get_minio_client
 
 
@@ -47,7 +50,7 @@ def test_bucket_exists_creates_bucket(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not mock_client.bucket_exists(test_bucket_name)
 
     # Call the function to ensure the bucket exists
-    bucket_exists(mock_client, test_bucket_name)
+    bucket_exists(cast(Minio, mock_client), test_bucket_name)
 
     # Now the bucket should exist
     assert mock_client.bucket_exists(test_bucket_name)
