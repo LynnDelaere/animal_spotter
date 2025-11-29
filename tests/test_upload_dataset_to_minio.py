@@ -1,12 +1,8 @@
-import sys
+"""Tests for dataset upload functionality."""
+
 from pathlib import Path
-import pytest
+from typing import Any
 
-# Ensure src is in sys.path for imports
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-# Import the function to be tested
 from src.data.upload_dataset_to_minio import upload_dataset_minio
 
 
@@ -14,12 +10,12 @@ from src.data.upload_dataset_to_minio import upload_dataset_minio
 class FakeMinio:
     """Simple fake Minio client for testing purposes."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.args = args
         self.kwargs = kwargs
-        self.buckets = set()
+        self.buckets: set[str] = set()
         # keep track of uploaded objects like the real client would
-        self.uploaded = []
+        self.uploaded: list[tuple[str, str, str]] = []
 
     def bucket_exists(self, bucket_name: str) -> bool:
         return bucket_name in self.buckets
@@ -33,7 +29,7 @@ class FakeMinio:
         self.uploaded.append((bucket_name, object_name, file_path))
 
 
-def test_upload_export_dir_to_minio(tmp_path):
+def test_upload_export_dir_to_minio(tmp_path: Path) -> None:
     """Test uploading files from export_dir to MinIO."""
     # Create a fake directory structure with files
     export_dir = tmp_path / "exported_dataset"
@@ -70,6 +66,6 @@ def test_upload_export_dir_to_minio(tmp_path):
     ]
 
     # Check the bucket names
-    for bname, object_name, file_path in fake_minio.uploaded:
+    for bname, _object_name, file_path in fake_minio.uploaded:
         assert bname == bucket_name
         assert Path(file_path).is_file()

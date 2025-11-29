@@ -1,8 +1,15 @@
+"""Dataset upload utilities for MinIO.
+
+Provides functions to download, export, and upload FiftyOne datasets to MinIO storage.
+"""
+
 from pathlib import Path
+
 import fiftyone as fo
 import fiftyone.zoo as foz
 from minio import Minio
-from src.data.minio_datamanagement import get_minio_client, bucket_exists
+
+from src.data.minio_datamanagement import bucket_exists, get_minio_client
 
 # Bucket name and prefix for datasets
 BUCKET_NAME = "datasets"
@@ -47,10 +54,12 @@ def upload_dataset_minio(
     export_dir: Path = EXPORT_DIR,
 ) -> int:
     """Upload the dataset files to MinIO.
+
     Returns the number of files uploaded.
     """
     print(
-        f"Uploading files from {export_dir} to bucket {bucket_name} with prefix {bucket_prefix}"
+        f"Uploading files from {export_dir} to bucket {bucket_name} "
+        f"with prefix {bucket_prefix}"
     )
     count = 0
     for file_path in export_dir.rglob("*"):

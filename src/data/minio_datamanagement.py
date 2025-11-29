@@ -1,13 +1,19 @@
+"""MinIO data management utilities.
+
+Provides functions for creating MinIO clients and managing buckets.
+"""
+
 import os
 from pathlib import Path
-from minio import Minio
 
 from dotenv import load_dotenv
+from minio import Minio
 
 # Load environment variables from .env file
 ROOT_DIR = Path(__file__).resolve().parents[2]
 dotenv_path = ROOT_DIR / ".env"
 load_dotenv(dotenv_path=dotenv_path, override=False)
+
 
 # Function to create MinIO client
 def get_minio_client() -> Minio:
@@ -27,9 +33,14 @@ def get_minio_client() -> Minio:
     ]
 
     if is_missing:
-        raise EnvironmentError(
+        raise OSError(
             f"Missing required environment variables: {', '.join(is_missing)}"
         )
+
+    # Narrow Optional[str] to str for type checker
+    assert minio_endpoint is not None
+    assert minio_root_user is not None
+    assert minio_root_password is not None
 
     return Minio(
         endpoint=minio_endpoint,
@@ -37,6 +48,7 @@ def get_minio_client() -> Minio:
         secret_key=minio_root_password,
         secure=False,
     )
+
 
 # Function to ensure bucket exists
 def bucket_exists(minio_client: Minio, bucket_name: str) -> None:
