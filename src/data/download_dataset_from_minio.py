@@ -31,7 +31,7 @@ def download_dataset_from_minio(
     Returns the number of files downloaded.
     """
     if not client.bucket_exists(bucket_name=bucket_name):
-        raise S3Error(f"Bucket {bucket_name} does not exist in MinIO.")
+        raise ValueError(f"Bucket {bucket_name} does not exist in MinIO.")
 
     print(
         f"Downloading dataset from MinIO bucket: {bucket_name}, prefix: {bucket_prefix}"
@@ -51,6 +51,8 @@ def download_dataset_from_minio(
             continue  # Skip directories
 
         object_name = obj.object_name
+        if object_name is None:
+            continue  # Skip if object name is None
 
         if object_name.startswith(bucket_prefix):
             relative_path = object_name[len(bucket_prefix) :].lstrip("/")
