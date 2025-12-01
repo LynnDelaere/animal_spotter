@@ -1,38 +1,25 @@
 """Download a subset of Open Images (V7) for selected animals.
 
-This script downloads images and annotations for these classes:
-Cat, Dog, Horse, Sheep, Cow, Elephant, Bear, Zebra, and Giraffe.
+This script downloads images and annotations for specified animal classes
+from the Open Images dataset. It uses a YAML configuration file to specify
+the target classes, limit per class, and output directories.
 """
 
+import argparse
 from pathlib import Path
+from typing import Any
 
 import boto3
 import pandas as pd
 import requests
+import yaml
 from botocore.client import UNSIGNED
 from botocore.config import Config
 from tqdm import tqdm
 
-# Set up the target classes
-TARGET_CLASSES = [
-    "Cat",
-    "Dog",
-    "Horse",
-    "Sheep",
-    "Cow",
-    "Elephant",
-    "Bear",
-    "Zebra",
-    "Giraffe",
-]
-
-# Limit for number of samples per class per split
-MAX_SAMPLES_PER_CLASS = 300
-
 # Directory to save downloaded images
 ROOT_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = (ROOT_DIR / "data" / "openimages_animals").resolve()
-METADATA_DIR = DATA_DIR / "metadata"
+METADATA_DIR = (ROOT_DIR / "data" / "metadata").resolve()
 
 # Open Images metadata URLs
 BASE_URL = "https://storage.googleapis.com/openimages"
@@ -45,12 +32,17 @@ ANNOTATIONS_URLS = {
     "test": f"{BASE_URL}/2018_04/test/test-annotations-bbox.csv",
 }
 
-# Image ID list URLs (these contain the actual S3 paths for images)
-IMAGE_IDS_URLS = {
-    "train": f"{BASE_URL}/2018_04/train/train-images-boxable-with-rotation.csv",
-    "validation": f"{BASE_URL}/2018_04/validation/validation-images-with-rotation.csv",
-    "test": f"{BASE_URL}/2018_04/test/test-images-with-rotation.csv",
-}
+
+# Load the YAML config file
+def load_config(config_path: str) -> dict[Any, Any]:
+    """Load configuration from a YAML file."""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(path) as f:
+        result: dict[Any, Any] = yaml.safe_load(f)
+        return result
 
 
 # Function to download the dataset
@@ -197,37 +189,64 @@ def download_images(image_ids: list, images_dir: Path, split_name: str) -> None:
     )
 
 
-def main() -> None:
-    """Download the dataset for train/validation/test splits."""
-    # Download class descriptions
+def build_parser() -> argparse.ArgumentParser:
+    """Build CLI argument parser."""
+    parser = argparse.ArgumentParser(
+        description="Download a subset of Open Images dataset "
+        "for selected animal classes."
+    )
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to the YAML configuration file."
+    )
+    return parser
+
+
+def run_from_args(args: argparse.Namespace) -> int:
+    """Run the dataset download process based on CLI arguments."""
+    cfg = load_config(args.config)
+    target_classes = cfg["dataset"]["classes"]
+    limit = cfg["dataset"]["limit"]
+    raw_dir_str = cfg["paths"]["raw_dir"]
+    raw_dir = (ROOT_DIR / raw_dir_str).resolve()
+    print(f"Start download with config: {args.config}")
+    print(f" - Classes: {target_classes}")
+    print(f" - Limit: {limit}")
+    print(f" - Output Dir: {raw_dir}")
+    METADATA_DIR.mkdir(parents=True, exist_ok=True)
     class_csv_path = METADATA_DIR / "oidv7-class-descriptions-boxable.csv"
     download_dataset(CLASS_URL, class_csv_path)
+    class_to_id = get_image_ids_for_classes(target_classes, class_csv_path)
+    if not class_to_id:
+        print("Geen geldige klassen gevonden. Stoppen.")
+        return 0
 
-    # Get target class IDs
-    class_to_id = get_image_ids_for_classes(TARGET_CLASSES, class_csv_path)
-
-    # Process each split (train, validation, test)
+    # Track unique images across all splits so total reflects distinct files
+    unique_image_ids: set[str] = set()
     for split_name, annotations_url in ANNOTATIONS_URLS.items():
         print(f"\n{'='*60}")
         print(f"Processing {split_name.upper()} split")
         print(f"{'='*60}")
-
-        # Download annotations for this split
         annotations_csv_path = METADATA_DIR / f"{split_name}-annotations-bbox.csv"
         download_dataset(annotations_url, annotations_csv_path)
-
-        # Filter annotations to get relevant image IDs
         image_ids = filter_annotations(
-            class_to_id, annotations_csv_path, MAX_SAMPLES_PER_CLASS, split_name
+            class_to_id, annotations_csv_path, limit, split_name
         )
-
-        # Download images for this split
-        images_dir = DATA_DIR / "images" / split_name
-        download_images(image_ids, images_dir, split_name)
-
+        # Add new unique IDs only
+        new_ids = [i for i in image_ids if i not in unique_image_ids]
+        images_dir = raw_dir / "images" / split_name
+        download_images(new_ids, images_dir, split_name)
+        unique_image_ids.update(new_ids)
     print(f"\n{'='*60}")
     print("Dataset download complete!")
     print(f"{'='*60}")
+    return len(unique_image_ids)
+
+
+def main() -> None:  # pragma: no cover
+    """Entry point for the raw dataset download CLI."""
+    parser = build_parser()
+    args = parser.parse_args()
+    run_from_args(args)
 
 
 if __name__ == "__main__":

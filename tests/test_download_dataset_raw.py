@@ -1,14 +1,18 @@
-"""Tests for download_dataset_raw.py functionality."""
+"""Tests for download_dataset_raw functionality and CLI parser."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
+import src.data.download_dataset_raw as mod
 from src.data.download_dataset_raw import (
+    build_parser,
     download_dataset,
     download_images,
     filter_annotations,
     get_image_ids_for_classes,
+    run_from_args,
 )
 
 
@@ -75,3 +79,39 @@ def test_download_images(tmp_path: Path) -> None:
             ("open-images-dataset", "test/img1.jpg", str(images_dir / "img1.jpg")),
             ("open-images-dataset", "test/img2.jpg", str(images_dir / "img2.jpg")),
         ]
+
+
+def test_cli_download_raw_config_parsing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test CLI download using config file mode."""
+    # Prepare minimal config
+    cfg = tmp_path / "cfg.yaml"
+    cfg.write_text(
+        "dataset:\n  classes: [Cat]\n  limit: 1\n"
+        "paths:\n  raw_dir: data/raw_cli_test\n"
+    )
+
+    # Create expected local directory structure
+    local_dir = Path(__file__).resolve().parents[2] / "data" / "raw_cli_test"
+    (local_dir / "images" / "train").mkdir(parents=True, exist_ok=True)
+
+    # Patch external functions to avoid network/S3
+    monkeypatch.setattr(mod, "download_dataset", lambda *a, **k: None)
+    monkeypatch.setattr(
+        mod, "get_image_ids_for_classes", lambda *a, **k: {"Cat": "/m/01"}
+    )
+    monkeypatch.setattr(mod, "filter_annotations", lambda *a, **k: ["img1"])  # one id
+    monkeypatch.setattr(mod, "download_images", lambda *a, **k: None)
+
+    parser = build_parser()
+    args = parser.parse_args(["--config", str(cfg)])
+    total = run_from_args(args)
+    assert total == 1
+
+
+def test_cli_download_raw_requires_config() -> None:
+    """Test that CLI download requires a config argument."""
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args([])
