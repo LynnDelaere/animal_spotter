@@ -200,6 +200,7 @@ tifffile==2025.10.16
 toml==0.10.2
 tqdm==4.67.1
 typer-slim==0.20.0
+types-PyYAML==6.0.12.20250915
 types-requests==2.32.4.20250913
 typing_extensions==4.15.0
 tzdata==2025.2

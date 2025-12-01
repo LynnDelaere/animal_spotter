@@ -69,10 +69,10 @@ def download_dataset_from_minio(
         object_name = obj.object_name
 
         # Calculate relative path by removing the prefix
-        if object_name.startswith(bucket_prefix):
+        if object_name is not None and object_name.startswith(bucket_prefix):
             relative_path = object_name[len(bucket_prefix) :].lstrip("/")
         else:
-            relative_path = object_name
+            relative_path = object_name if object_name is not None else ""
 
         local_file_path = local_download_dir / relative_path
 
@@ -81,11 +81,12 @@ def download_dataset_from_minio(
 
         # Download the file
         print(f"  Downloading: {object_name} -> {local_file_path}")
-        client.fget_object(
-            bucket_name=bucket_name,
-            object_name=object_name,
-            file_path=str(local_file_path),
-        )
+        if object_name is not None:
+            client.fget_object(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                file_path=str(local_file_path),
+            )
         downloaded_count += 1
 
     print(f"Downloaded {downloaded_count} files from MinIO")

@@ -12,8 +12,8 @@ from src.data.upload_dataset_to_minio import (
     upload_dataset_to_minio,
 )
 
-mod.get_minio_client = lambda: cast(Any, FakeMinio())  # type: ignore[assignment]
-mod.bucket_exists = lambda _c, _b: True  # type: ignore[assignment]
+mod.get_minio_client = lambda: cast(Any, FakeMinio())
+mod.bucket_exists = lambda _c, _b: True
 
 
 # A simple fake Minio client for testing purposes

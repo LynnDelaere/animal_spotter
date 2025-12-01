@@ -57,7 +57,7 @@ class FakeMinio:
 
 
 # Patch points for CLI tests
-mod.get_minio_client = lambda: cast(Any, FakeMinio())  # type: ignore[assignment]
+mod.get_minio_client = lambda: cast(Any, FakeMinio())
 
 
 def test_download_dataset_from_minio(tmp_path: Path) -> None:
