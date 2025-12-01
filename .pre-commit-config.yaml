@@ -28,6 +28,7 @@ repos:
         exclude: ^tests/
         additional_dependencies:
           - types-requests
+          - types-PyYAML
 
 default_stages: [pre-commit]
 

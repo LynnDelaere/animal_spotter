@@ -12,7 +12,7 @@ from typing import Any
 import boto3
 import pandas as pd
 import requests
-import yaml  # type: ignore[import-untyped]
+import yaml
 from botocore.client import UNSIGNED
 from botocore.config import Config
 from tqdm import tqdm

@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -104,7 +105,7 @@ def test_get_class_mapping(mock_metadata_dir: Path) -> None:
 
 
 def test_get_class_mapping_missing_classes(
-    mock_metadata_dir: Path, capsys: object
+    mock_metadata_dir: Path, capsys: Any
 ) -> None:
     """Test get_class_mapping warns about missing classes."""
     target_classes = ["Cat", "Dog", "Elephant"]
@@ -196,7 +197,7 @@ def test_create_coco_json(
 
 
 def test_create_coco_json_no_images(
-    tmp_path: Path, mock_metadata_dir: Path, capsys: object
+    tmp_path: Path, mock_metadata_dir: Path, capsys: Any
 ) -> None:
     """Test create_coco_json handles missing images directory."""
     empty_images_dir = tmp_path / "empty_images"
@@ -255,7 +256,7 @@ def test_create_coco_json_filters_classes(
 
 
 def test_create_coco_json_handles_corrupt_image(
-    tmp_path: Path, mock_metadata_dir: Path, capsys: object
+    tmp_path: Path, mock_metadata_dir: Path, capsys: Any
 ) -> None:
     """Test create_coco_json handles corrupt/unreadable images."""
     images_dir = tmp_path / "images" / "train"

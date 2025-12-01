@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yaml  # type: ignore[import-untyped]
+import yaml
 from PIL import Image
 from tqdm import tqdm
 

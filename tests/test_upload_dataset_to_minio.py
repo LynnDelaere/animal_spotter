@@ -13,7 +13,7 @@ from src.data.upload_dataset_to_minio import (
 )
 
 mod.get_minio_client = lambda: cast(Any, FakeMinio())
-mod.bucket_exists = lambda _c, _b: True
+mod.bucket_exists = lambda minio_client, bucket_name: None
 
 
 # A simple fake Minio client for testing purposes

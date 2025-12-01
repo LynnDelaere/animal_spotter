@@ -8,7 +8,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from minio import Minio
 
 from src.data.minio_datamanagement import bucket_exists, get_minio_client
