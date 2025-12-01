@@ -1,0 +1,23 @@
+dataset:
+  version: "v1"
+  classes:
+    - "Cat"
+    - "Dog"
+    - "Horse"
+    - "Sheep"
+    - "Cattle"
+    - "Elephant"
+    - "Bear"
+    - "Zebra"
+    - "Giraffe"
+  limit: 300
+
+paths:
+  raw_dir: "data/"
+  processed_dir: "data/processed"
+
+minio:
+  bucket: "datasets"
+  endpoint: "minio.example.com"
+  raw_prefix: "openimages_animals/raw"
+  processed_prefix: "openimages_animals/processed"
