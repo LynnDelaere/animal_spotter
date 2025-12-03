@@ -84,7 +84,7 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir=str(ROOT_DIR / "models" / "detr-finetuned"),
         per_device_train_batch_size=4,
-        num_train_epochs=10,
+        num_train_epochs=2,
         fp16=torch.cuda.is_available(),
         save_steps=200,
         logging_steps=50,
@@ -93,8 +93,8 @@ def main() -> None:
         save_total_limit=2,
         remove_unused_columns=False,
         dataloader_pin_memory=True,
-        eval_strategy="steps",
-        eval_steps=200,
+        eval_strategy="epoch",
+        save_strategy="epoch",
     )
 
     # Use a lambda to pass processor to collate_fn
