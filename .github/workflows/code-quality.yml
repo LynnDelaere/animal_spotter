@@ -2,7 +2,7 @@ name: Code Quality
 
 on:
   pull_request:
-    branches: [ main]
+    branches: [ main ]
 
 jobs:
   quality:
@@ -15,34 +15,35 @@ jobs:
       - name: Show python version on system
         run: python --version
 
-      - name: Set up venv and install deps
+      - name: Set up venv
+        run: python -m venv .venv
+
+      - name: Install deps into venv
         run: |
-          python -m venv .venv
-          echo "$PWD/.venv/bin" >> $GITHUB_PATH
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
 
       - name: Formatting (Black + Ruff)
         run: |
-          python -m black --check .
-          python -m ruff check .
+          .venv/bin/black --check .
+          .venv/bin/ruff check .
 
       - name: Type checking (mypy)
         run: |
-          python -m mypy .
+          .venv/bin/mypy .
 
       - name: Docstyle (pydocstyle)
         run: |
-          python -m pydocstyle src || true
+          .venv/bin/pydocstyle src || true
 
       - name: Doc coverage (interrogate)
         run: |
-          python -m interrogate -c 50 -v src || true
+          .venv/bin/interrogate -c 50 -v src || true
 
       - name: Security scan (Bandit)
         run: |
-          python -m bandit -ll -r src || true
+          .venv/bin/bandit -ll -r src || true
 
       - name: Dependency vulnerabilities (pip-audit)
         run: |
-          python -m pip_audit -r requirements.txt || true
+          .venv/bin/pip-audit -r requirements.txt || true
