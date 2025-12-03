@@ -111,8 +111,10 @@ def main() -> None:
 
     # Save the final model
     trainer.save_model()
-    processor.save_pretrained(Path(training_args.output_dir))
-    print(f"Model saved to {training_args.output_dir}")
+    # Save processor to the same output directory (guarantee a str, not None)
+    out_dir = training_args.output_dir or str(ROOT_DIR / "models" / "detr-finetuned")
+    processor.save_pretrained(out_dir)
+    print(f"Model saved to {out_dir}")
 
 
 if __name__ == "__main__":

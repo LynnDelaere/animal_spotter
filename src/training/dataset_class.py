@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 from torch.utils.data import Dataset
@@ -18,7 +19,7 @@ class AnimalSpotterDataset(Dataset):
         self,
         img_folder: str | Path,
         annotation_file: str | Path,
-        processor: "DetrImageProcessor",
+        processor: DetrImageProcessor | Any,
     ) -> None:
         """Initialize the dataset.
 
