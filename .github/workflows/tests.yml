@@ -15,12 +15,14 @@ jobs:
     - name: Show python version on system
       run: python --version
 
-    - name: Set up venv and install deps
-      run: |
-        python -m venv .venv
-        echo "$PWD/.venv/bin" >> $GITHUB_PATH
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+    - name: Set up venv
+      run: python -m venv .venv
 
-    - name: Run tests
-      run: pytest tests/ -v
+    - name: Install deps into venv
+      run: |
+        .venv/bin/python -m pip install --upgrade pip
+        .venv/bin/pip install -r requirements.txt
+
+    - name: Run tests with pytest
+      run: |
+        .venv/bin/pytest tests --cov=src --cov-report=xml
