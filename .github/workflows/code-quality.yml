@@ -24,26 +24,25 @@ jobs:
 
       - name: Formatting (Black + Ruff)
         run: |
-          black --check .
-          ruff check .
+          python -m black --check .
+          python -m ruff check .
 
       - name: Type checking (mypy)
         run: |
-          mypy .
+          python -m mypy .
 
       - name: Docstyle (pydocstyle)
         run: |
-          pydocstyle src || true
+          python -m pydocstyle src || true
 
       - name: Doc coverage (interrogate)
         run: |
-          interrogate -c 50 -v src || true
+          python -m interrogate -c 50 -v src || true
 
       - name: Security scan (Bandit)
         run: |
-          bandit -ll -r src || true
+          python -m bandit -ll -r src || true
 
       - name: Dependency vulnerabilities (pip-audit)
         run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt || true
+          python -m pip_audit -r requirements.txt || true
