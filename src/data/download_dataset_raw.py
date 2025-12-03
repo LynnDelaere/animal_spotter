@@ -223,9 +223,9 @@ def run_from_args(args: argparse.Namespace) -> int:
     # Track unique images across all splits so total reflects distinct files
     unique_image_ids: set[str] = set()
     for split_name, annotations_url in ANNOTATIONS_URLS.items():
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Processing {split_name.upper()} split")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         annotations_csv_path = METADATA_DIR / f"{split_name}-annotations-bbox.csv"
         download_dataset(annotations_url, annotations_csv_path)
         image_ids = filter_annotations(
@@ -236,9 +236,9 @@ def run_from_args(args: argparse.Namespace) -> int:
         images_dir = raw_dir / "images" / split_name
         download_images(new_ids, images_dir, split_name)
         unique_image_ids.update(new_ids)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Dataset download complete!")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     return len(unique_image_ids)
 
 
