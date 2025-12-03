@@ -15,8 +15,10 @@ jobs:
     - name: Show python version on system
       run: python --version
 
-    - name: Install dependencies
+    - name: Set up venv and install deps
       run: |
+        python -m venv .venv
+        echo "$PWD/.venv/bin" >> $GITHUB_PATH
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
