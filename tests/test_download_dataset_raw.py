@@ -88,8 +88,7 @@ def test_cli_download_raw_config_parsing(
     # Prepare minimal config
     cfg = tmp_path / "cfg.yaml"
     cfg.write_text(
-        "dataset:\n  classes: [Cat]\n  limit: 1\n"
-        "paths:\n  raw_dir: data/raw_cli_test\n"
+        "dataset:\n  classes: [Cat]\n  limit: 1\npaths:\n  raw_dir: data/raw_cli_test\n"
     )
 
     # Create expected local directory structure

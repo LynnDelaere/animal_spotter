@@ -14,8 +14,7 @@ from src.data.convert_to_coco import (
 )
 
 
-@pytest.fixture
-def mock_metadata_dir(tmp_path: Path) -> Path:
+def create_mock_metadata_dir(tmp_path: Path) -> Path:
     """Create a mock metadata directory with class descriptions."""
     metadata_dir = tmp_path / "metadata"
     metadata_dir.mkdir()
@@ -33,8 +32,7 @@ def mock_metadata_dir(tmp_path: Path) -> Path:
     return metadata_dir
 
 
-@pytest.fixture
-def mock_annotations_csv(tmp_path: Path) -> Path:
+def create_mock_annotations_csv(tmp_path: Path) -> Path:
     """Create a mock annotations CSV."""
     metadata_dir = tmp_path / "metadata"
     metadata_dir.mkdir(exist_ok=True)
@@ -55,8 +53,7 @@ def mock_annotations_csv(tmp_path: Path) -> Path:
     return metadata_dir
 
 
-@pytest.fixture
-def mock_images_dir(tmp_path: Path) -> Path:
+def create_mock_images_dir(tmp_path: Path) -> Path:
     """Create a mock images directory with dummy images."""
     images_dir = tmp_path / "images" / "train"
     images_dir.mkdir(parents=True)
@@ -93,10 +90,11 @@ def test_load_config_file_not_found() -> None:
         load_config("nonexistent.yaml")
 
 
-def test_get_class_mapping(mock_metadata_dir: Path) -> None:
+def test_get_class_mapping(tmp_path: Path) -> None:
     """Test get_class_mapping creates correct mappings."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
     target_classes = ["Cat", "Dog"]
-    mid_to_name, name_to_id = get_class_mapping(mock_metadata_dir, target_classes)
+    mid_to_name, name_to_id = get_class_mapping(metadata_dir, target_classes)
 
     assert mid_to_name["/m/01yrx"] == "Cat"
     assert mid_to_name["/m/0bt9lr"] == "Dog"
@@ -104,12 +102,11 @@ def test_get_class_mapping(mock_metadata_dir: Path) -> None:
     assert name_to_id["Dog"] == 1
 
 
-def test_get_class_mapping_missing_classes(
-    mock_metadata_dir: Path, capsys: Any
-) -> None:
+def test_get_class_mapping_missing_classes(tmp_path: Path, capsys: Any) -> None:
     """Test get_class_mapping warns about missing classes."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
     target_classes = ["Cat", "Dog", "Elephant"]
-    mid_to_name, name_to_id = get_class_mapping(mock_metadata_dir, target_classes)
+    mid_to_name, name_to_id = get_class_mapping(metadata_dir, target_classes)
 
     captured = capsys.readouterr()
     assert "WARNING: Classes not found" in captured.out
@@ -124,12 +121,13 @@ def test_get_class_mapping_missing_file(tmp_path: Path) -> None:
         get_class_mapping(tmp_path, ["Cat"])
 
 
-def test_create_coco_json(
-    tmp_path: Path, mock_metadata_dir: Path, mock_images_dir: Path
-) -> None:
+def test_create_coco_json(tmp_path: Path) -> None:
     """Test create_coco_json generates valid COCO format."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
+    images_dir = create_mock_images_dir(tmp_path)
+
     # Setup annotations
-    annot_csv = mock_metadata_dir / "train-annotations-bbox.csv"
+    annot_csv = metadata_dir / "train-annotations-bbox.csv"
     df = pd.DataFrame(
         {
             "ImageID": ["img001", "img001", "img002"],
@@ -147,8 +145,8 @@ def test_create_coco_json(
 
     create_coco_json(
         split="train",
-        metadata_dir=mock_metadata_dir,
-        images_dir=mock_images_dir,
+        metadata_dir=metadata_dir,
+        images_dir=images_dir,
         output_path=output_path,
         target_classes=target_classes,
     )
@@ -196,10 +194,9 @@ def test_create_coco_json(
     assert "iscrowd" in ann
 
 
-def test_create_coco_json_no_images(
-    tmp_path: Path, mock_metadata_dir: Path, capsys: Any
-) -> None:
+def test_create_coco_json_no_images(tmp_path: Path, capsys: Any) -> None:
     """Test create_coco_json handles missing images directory."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
     empty_images_dir = tmp_path / "empty_images"
     empty_images_dir.mkdir()
 
@@ -207,7 +204,7 @@ def test_create_coco_json_no_images(
 
     create_coco_json(
         split="train",
-        metadata_dir=mock_metadata_dir,
+        metadata_dir=metadata_dir,
         images_dir=empty_images_dir,
         output_path=output_path,
         target_classes=["Cat", "Dog"],
@@ -217,12 +214,13 @@ def test_create_coco_json_no_images(
     assert "Skipping train" in captured.out
 
 
-def test_create_coco_json_filters_classes(
-    tmp_path: Path, mock_metadata_dir: Path, mock_images_dir: Path
-) -> None:
+def test_create_coco_json_filters_classes(tmp_path: Path) -> None:
     """Test create_coco_json only includes specified classes."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
+    images_dir = create_mock_images_dir(tmp_path)
+
     # Setup annotations with multiple classes
-    annot_csv = mock_metadata_dir / "train-annotations-bbox.csv"
+    annot_csv = metadata_dir / "train-annotations-bbox.csv"
     df = pd.DataFrame(
         {
             "ImageID": ["img001", "img001", "img002"],
@@ -240,8 +238,8 @@ def test_create_coco_json_filters_classes(
 
     create_coco_json(
         split="train",
-        metadata_dir=mock_metadata_dir,
-        images_dir=mock_images_dir,
+        metadata_dir=metadata_dir,
+        images_dir=images_dir,
         output_path=output_path,
         target_classes=target_classes,
     )
@@ -255,10 +253,9 @@ def test_create_coco_json_filters_classes(
     assert coco_data["categories"][0]["name"] == "Cat"
 
 
-def test_create_coco_json_handles_corrupt_image(
-    tmp_path: Path, mock_metadata_dir: Path, capsys: Any
-) -> None:
+def test_create_coco_json_handles_corrupt_image(tmp_path: Path, capsys: Any) -> None:
     """Test create_coco_json handles corrupt/unreadable images."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
     images_dir = tmp_path / "images" / "train"
     images_dir.mkdir(parents=True)
 
@@ -267,7 +264,7 @@ def test_create_coco_json_handles_corrupt_image(
     corrupt_img.write_text("not a valid image")
 
     # Create annotations
-    annot_csv = mock_metadata_dir / "train-annotations-bbox.csv"
+    annot_csv = metadata_dir / "train-annotations-bbox.csv"
     df = pd.DataFrame(
         {
             "ImageID": ["corrupt"],
@@ -284,7 +281,7 @@ def test_create_coco_json_handles_corrupt_image(
 
     create_coco_json(
         split="train",
-        metadata_dir=mock_metadata_dir,
+        metadata_dir=metadata_dir,
         images_dir=images_dir.parent,
         output_path=output_path,
         target_classes=["Cat"],
@@ -301,12 +298,13 @@ def test_create_coco_json_handles_corrupt_image(
     assert len(coco_data["annotations"]) == 0
 
 
-def test_create_coco_json_category_ids_match_annotations(
-    tmp_path: Path, mock_metadata_dir: Path, mock_images_dir: Path
-) -> None:
+def test_create_coco_json_category_ids_match_annotations(tmp_path: Path) -> None:
     """Test that category IDs in annotations match the categories list."""
+    metadata_dir = create_mock_metadata_dir(tmp_path)
+    images_dir = create_mock_images_dir(tmp_path)
+
     # Setup annotations
-    annot_csv = mock_metadata_dir / "train-annotations-bbox.csv"
+    annot_csv = metadata_dir / "train-annotations-bbox.csv"
     df = pd.DataFrame(
         {
             "ImageID": ["img001"],
@@ -324,8 +322,8 @@ def test_create_coco_json_category_ids_match_annotations(
 
     create_coco_json(
         split="train",
-        metadata_dir=mock_metadata_dir,
-        images_dir=mock_images_dir,
+        metadata_dir=metadata_dir,
+        images_dir=images_dir,
         output_path=output_path,
         target_classes=target_classes,
     )
