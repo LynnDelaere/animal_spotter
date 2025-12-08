@@ -17,6 +17,11 @@ fi
 chown -R "${RUNNER_USER}:${RUNNER_USER}" "${RUNNER_HOME}"
 cd "${RUNNER_HOME}"
 
+if [ -S /var/run/docker.sock ]; then
+  echo "Adjusting permissions on Docker socket..."
+  chmod 666 /var/run/docker.sock || true
+fi
+
 if [ ! -f .runner ]; then
   : "${RUNNER_URL:?Environment variable RUNNER_URL is required}"
   : "${RUNNER_TOKEN:?Environment variable RUNNER_TOKEN is required}"
