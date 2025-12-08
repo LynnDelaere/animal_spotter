@@ -1,43 +1,61 @@
 # Pre-commit Hooks & Local Checks
 
-This project uses `pre-commit` to enforce formatting, linting, docstrings, type checks, and coverage thresholds before code is committed. Running these locally helps your commits pass GitHub Actions smoothly.
+Animal Spotter uses `pre-commit` hooks to mirror the checks enforced by the
+Code Quality workflow (Black, Ruff, mypy, docstring tooling). Keeping hooks up to
+date locally prevents surprises once GitHub Actions runs.
 
-## Quick Setup
-- Install tooling in your virtualenv:
-  - `pip install pre-commit`
-  - `pip install -r requirements.txt` (includes formatters/linters used in CI)
-- Register hooks: `pre-commit install`
+## Quick start
+```bash
+pip install -r requirements.txt  # installs the same tool versions as CI
+pip install pre-commit
+pre-commit install
+```
 
-## What Runs on Commit
-Configured in `.pre-commit-config.yaml`:
-- `black`: formats Python code.
-- `ruff` with `--fix`: lints and auto-fixes issues.
-- `ruff-format`: ensures consistent formatting.
-- `pydocstyle --convention=google src`: checks docstrings in `src/`.
-- `interrogate -c 50 -v src`: verifies docstring coverage ≥ 50%.
-- `mypy --ignore-missing-imports`: static type checks.
+Hooks run at the `pre-commit` stage. If a hook edits files (Black/Ruff), Git
+blocks the commit so you can `git add` the changes and retry.
 
-Hooks run at the `commit` stage. If a hook modifies files (e.g., `black`, `ruff`), your commit is blocked so you can `git add` the changes and re-commit.
+## Hooks currently configured
+From `.pre-commit-config.yaml`:
 
-## Run Everything Before Committing
-To run all hooks across the repo:
-- `pre-commit run --all-files`
+| Hook | Purpose | Notes |
+| --- | --- | --- |
+| `black` | Format Python files. | Uses Python 3.13 runtime to match the tool’s latest version. |
+| `ruff` (`--fix`) | Lint + auto-fix violations. | Aligns with CI’s `ruff check .`. |
+| `ruff-format` | Additional formatter from Ruff. | Ensures consistent style in files Black does not touch. |
+| `pydocstyle --convention=google src` | Enforce docstring style. |
+| `interrogate -c 50 -v src` | Enforce ≥50% docstring coverage. |
+| `mypy --ignore-missing-imports` | Static type checking (tests/ excluded). | Installs `types-requests` + `types-PyYAML`. |
 
-## Individual Commands (useful for quick checks)
-- Format:
-  - `black .`
-  - `ruff format .` (or `pre-commit run ruff-format --all-files`)
-- Lint:
-  - `ruff .` (add `--fix` to auto-fix)
-- Docstrings:
-  - `pydocstyle --convention=google src`
-  - `interrogate -c 50 -v src`
-- Types:
-  - `mypy --ignore-missing-imports .`
+Run all hooks manually with:
+```bash
+pre-commit run --all-files
+```
 
-## Keeping Hooks Up-to-date
-- Update hook versions: `pre-commit autoupdate`
-- Optional PR automation is enabled in CI to auto-fix/auto-update on a schedule.
+## Equivalent ad-hoc commands
+Useful when iterating rapidly or debugging hook failures:
+```bash
+black .
+ruff check . --fix
+ruff format .
+pydocstyle --convention=google src
+interrogate -c 50 -v src
+mypy --ignore-missing-imports .
+```
+
+## Updating hooks
+- Bump versions: `pre-commit autoupdate`.
+- CI (`.pre-commit-config.yaml` → `ci` block) is configured to open quarterly
+  auto-update PRs and to allow autofix PRs when hooks modify files.
+
+## Troubleshooting
+- **Formatting changes** → re-add files after hooks modify them.
+- **Docstring coverage fails** → add concise docstrings to public modules,
+  classes and functions in `src/`.
+- **mypy errors** → add type hints or adjust stubs; avoid `# type: ignore`
+  unless justified.
+
+Running `pre-commit run --all-files` before pushing should give you the same
+results as the Code Quality GitHub Action (`quality` job).
 
 ## Troubleshooting
 - Hooks reformat files: re-add changes and re-commit.

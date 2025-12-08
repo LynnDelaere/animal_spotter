@@ -59,11 +59,57 @@ class AnimalSpotterDataset(Dataset):
         # Load image
         image = Image.open(img_path).convert("RGB")
 
+        # Get image size for bbox validation
+        img_width, img_height = image.size
+
         # Get annotations for this image
         anns = self.annotations.get(img_id, [])
 
         # Process the boxes
         boxes = [ann["bbox"] for ann in anns]
+
+        # Validate bounding boxes (COCO format: [x_min, y_min, width, height])
+        problems = []
+        for ann in anns:
+            box = ann.get("bbox")
+            if box is None or len(box) != 4:
+                problems.append(
+                    (img_id, img_path.name, box, "invalid format (expect 4 values)")
+                )
+                continue
+            try:
+                x, y, w, h = float(box[0]), float(box[1]), float(box[2]), float(box[3])
+            except Exception:
+                problems.append((img_id, img_path.name, box, "non-numeric values"))
+                continue
+
+            if w <= 0 or h <= 0:
+                problems.append(
+                    (img_id, img_path.name, box, "non-positive width/height")
+                )
+                continue
+            if x < 0 or y < 0:
+                problems.append((img_id, img_path.name, box, "negative x/y"))
+                continue
+            if x + w > img_width or y + h > img_height:
+                problems.append(
+                    (img_id, img_path.name, box, "bbox exceeds image bounds")
+                )
+
+        if problems:
+            # Build a helpful error message so user can locate bad annotations
+            details = "\n".join(
+                [
+                    f"image_id={p[0]} file={p[1]} bbox={p[2]} problem={p[3]}"
+                    for p in problems
+                ]
+            )
+            raise ValueError(
+                f"Found invalid bounding box annotations for images in"
+                f" {self.img_folder}:\n{details}\n"
+                "Check your COCO annotations (bbox should be [x, y, width, height]"
+                " with positive sizes)."
+            )
 
         # Process the labels
         labels = [ann["category_id"] for ann in anns]

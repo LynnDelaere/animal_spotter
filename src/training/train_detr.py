@@ -2,15 +2,13 @@
 
 from pathlib import Path
 
-# # Add the src directory to sys.path for module imports
-# ROOT_DIR = Path(__file__).resolve().parents[2]
-# sys.path.append(str(ROOT_DIR))
 import torch
 import yaml
 from dataset_class import AnimalSpotterDataset
 from transformers import (
     DetrForObjectDetection,
     DetrImageProcessor,
+    EarlyStoppingCallback,
     Trainer,
     TrainingArguments,
 )
@@ -20,6 +18,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
 IMAGES_DIR = DATA_DIR / "images"
 LABELS_DIR = DATA_DIR / "processed"
+LOG_DIR = ROOT_DIR / "logs"
 
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -84,17 +83,23 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir=str(ROOT_DIR / "models" / "detr-finetuned"),
         per_device_train_batch_size=4,
-        num_train_epochs=2,
+        num_train_epochs=50,
         fp16=torch.cuda.is_available(),
-        save_steps=200,
-        logging_steps=50,
-        learning_rate=1e-5,
+        learning_rate=2e-5,
+        warmup_steps=500,
         weight_decay=1e-4,
+        logging_dir=str(LOG_DIR),
+        logging_strategy="steps",
+        logging_steps=50,
+        report_to=["tensorboard"],
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
         save_total_limit=2,
         remove_unused_columns=False,
         dataloader_pin_memory=True,
-        eval_strategy="epoch",
-        save_strategy="epoch",
     )
 
     # Use a lambda to pass processor to collate_fn
@@ -104,9 +109,12 @@ def main() -> None:
         data_collator=lambda batch: collate_fn(batch, processor),
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
     )
 
     print("Starting training...")
+    print(f"Monitor training via TensorBoard at {LOG_DIR}")
+
     trainer.train()
 
     # Save the final model

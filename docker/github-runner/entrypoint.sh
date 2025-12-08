@@ -1,16 +1,28 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-cd /home/runner
+export RUNNER_ALLOW_RUNASROOT=1
 
-# First step: configure the runner if it hasn't been configured yet
+RUNNER_HOME="${RUNNER_HOME:-/home/runner}"
+RUNNER_DIST_DIR="${RUNNER_DIST_DIR:-/opt/actions-runner}"
+RUNNER_USER="${RUNNER_USER:-runner}"
+
+mkdir -p "${RUNNER_HOME}"
+
+if [ ! -f "${RUNNER_HOME}/config.sh" ]; then
+  echo "Initialising runner home from ${RUNNER_DIST_DIR}..."
+  cp -R "${RUNNER_DIST_DIR}/." "${RUNNER_HOME}/"
+fi
+
+chown -R "${RUNNER_USER}:${RUNNER_USER}" "${RUNNER_HOME}"
+cd "${RUNNER_HOME}"
+
 if [ ! -f .runner ]; then
   : "${RUNNER_URL:?Environment variable RUNNER_URL is required}"
   : "${RUNNER_TOKEN:?Environment variable RUNNER_TOKEN is required}"
 
   echo "Configuring runner for ${RUNNER_URL}..."
-
-  ./config.sh \
+  runuser -u "${RUNNER_USER}" -- ./config.sh \
     --unattended \
     --url "${RUNNER_URL}" \
     --token "${RUNNER_TOKEN}" \
@@ -25,4 +37,4 @@ else
 fi
 
 echo "Starting runner..."
-./run.sh
+exec runuser -u "${RUNNER_USER}" -- ./run.sh

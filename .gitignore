@@ -7,3 +7,5 @@ __pycache__/
 .vscode/
 data/*
 models/*
+logs/*
+docker/github-runner/runner-data/
