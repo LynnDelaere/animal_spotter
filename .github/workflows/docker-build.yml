@@ -15,6 +15,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Prepare Docker env file
+      run: |
+        cp docker/.env.example docker/.env
+    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     

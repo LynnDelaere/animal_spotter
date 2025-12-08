@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     git \
     procps \
+    python3 \
+    python3-venv \
+    python3-pip \
+    python-is-python3 \
     tar \
     unzip \
     && rm -rf /var/lib/apt/lists/*
