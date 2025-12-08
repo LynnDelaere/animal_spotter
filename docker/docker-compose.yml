@@ -19,5 +19,44 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+  animal-spotter-runner:
+    build:
+      context: ./github-runner
+    container_name: animal-spotter-runner
+    restart: unless-stopped
+    environment:
+      RUNNER_URL: ${RUNNER_URL:?Set RUNNER_URL}
+      RUNNER_NAME: ${RUNNER_NAME:-animal-spotter-runner-1}
+      RUNNER_LABELS: ${RUNNER_LABELS:-self-hosted,animal-spotter}
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?Set RUNNER_TOKEN}
+    volumes:
+      - ./github-runner/runner-data:/home/runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "bash", "-c", "pgrep -f Runner.Listener"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+  animal-spotter-app:
+    build:
+      context: ..
+      dockerfile: docker/python-app/Dockerfile
+    container_name: animal-spotter-app
+    restart: unless-stopped
+    working_dir: /workspace
+    env_file:
+      - .env
+    command: sleep infinity
+    volumes:
+      - ..:/workspace
+      - python-app-pip-cache:/root/.cache/pip
+    healthcheck:
+      test: ["CMD", "python", "-c", "import numpy"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 volumes:
   minio_data:
+  python-app-pip-cache:
