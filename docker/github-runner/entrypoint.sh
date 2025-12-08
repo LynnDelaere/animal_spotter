@@ -18,8 +18,12 @@ chown -R "${RUNNER_USER}:${RUNNER_USER}" "${RUNNER_HOME}"
 cd "${RUNNER_HOME}"
 
 if [ -S /var/run/docker.sock ]; then
-  echo "Adjusting permissions on Docker socket..."
-  chmod 666 /var/run/docker.sock || true
+  echo "Preparing Docker socket access..."
+  DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+  if ! getent group docker-host >/dev/null; then
+    groupadd -for -g "${DOCKER_GID}" docker-host || true
+  fi
+  usermod -aG docker-host "${RUNNER_USER}" || true
 fi
 
 if [ ! -f .runner ]; then
@@ -27,7 +31,7 @@ if [ ! -f .runner ]; then
   : "${RUNNER_TOKEN:?Environment variable RUNNER_TOKEN is required}"
 
   echo "Configuring runner for ${RUNNER_URL}..."
-  runuser -u "${RUNNER_USER}" -- ./config.sh \
+runuser -u "${RUNNER_USER}" -- ./config.sh \
     --unattended \
     --url "${RUNNER_URL}" \
     --token "${RUNNER_TOKEN}" \
