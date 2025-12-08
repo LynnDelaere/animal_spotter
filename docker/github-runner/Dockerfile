@@ -8,14 +8,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     jq \
     git \
+    gnupg \
+    gpg-agent \
+    dirmngr \
     procps \
-    python3 \
-    python3-venv \
-    python3-pip \
-    python-is-python3 \
+    software-properties-common \
     tar \
     unzip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        python3.13 \
+        python3.13-venv \
+        python3.13-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python3.13 get-pip.py \
+    && rm get-pip.py \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.13 1 \
+    && ln -sf /usr/bin/python3.13 /usr/local/bin/python3 \
+    && python -m pip install --upgrade pip
 
 RUN useradd -m runner
 

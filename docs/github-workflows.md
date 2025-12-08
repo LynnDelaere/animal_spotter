@@ -33,7 +33,7 @@ right now so branch protection can be configured accurately.
 
 ### 3. Docker Build (`.github/workflows/docker-build.yml`)
 - **Trigger**: `pull_request` → `main`
-- **Runner**: `ubuntu-latest` (GitHub-hosted)
+- **Runner**: `self-hosted` (Animal Spotter runner container)
 - **Steps**:
   - Validate `docker/docker-compose.yml` via `docker compose ... config`.
   - Build all images with `docker compose build --no-cache`.

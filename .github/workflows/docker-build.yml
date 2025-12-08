@@ -10,7 +10,7 @@ on:
 
 jobs:
   docker-build-test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, animal-spotter]
     
     steps:
     - uses: actions/checkout@v4
