@@ -121,6 +121,20 @@ python src/training/train_detr.py
 - When running outside Docker, ensure your `.venv` has the same dependencies as
   `requirements.txt` to avoid version mismatch warnings.
 
+## Interactive Gradio demo
+Spin up a simple UI to upload images, tweak the score threshold and visualize
+boxes with an annotated preview plus a detections table:
+```bash
+python -m src.gradio_app \
+  --checkpoint models/detr-finetuned \
+  --host 0.0.0.0 \
+  --port 7860
+```
+- `--checkpoint` accepts either a local directory or a Hugging Face repo id.
+- Provide `--share` if you want Gradio to expose a temporary public URL.
+- Sample wildlife photos are auto-detected from `data/images/test/` when
+  available so you can demo the model without uploading your own files.
+
 ---
 
 ## Docker stack
