@@ -208,7 +208,6 @@ pyppmd==1.2.0
 pyright==1.1.389
 pyTelegramBotAPI==4.29.1
 pytest==9.0.1
-pytest-cov==5.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
 python-multipart==0.0.20
@@ -230,6 +229,7 @@ safetensors==0.7.0
 scikit-image==0.25.2
 scikit-learn==1.7.2
 scipy==1.16.3
+seaborn==0.13.2
 semantic-version==2.10.0
 setuptools==80.9.0
 shellingham==1.5.4
