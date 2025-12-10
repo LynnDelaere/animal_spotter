@@ -1,3 +1,9 @@
+---
+title: animal-spotter
+app_file: src/gradio_app.py
+sdk: gradio
+sdk_version: 6.1.0
+---
 # Animal Spotter
 
 Animal Spotter fine-tunes Facebook's DETR model on a curated subset of Open
@@ -32,7 +38,9 @@ an all-in-one Python dev container).
 | `models/` | Local training outputs (ignored). |
 | `src/data/` | Data utilities (download/convert/upload/sync). |
 | `src/training/` | DETR dataset class and training script. |
-| `src/notebooks/` | Notebooks such as `evalutation_detr.ipynb` for inference demos. |
+| `src/evaluation/` | Evaluation scripts and helpers. |
+| `src/gradio_app.py` | Gradio demo app for interactive inference. |
+| `notebooks/` | Jupyter notebook for model evaluation and inference. |
 | `tests/` | Pytest suite covering the dataset class and helpers. |
 
 ---
@@ -115,11 +123,12 @@ python src/training/train_detr.py
 ---
 
 ## Evaluation / inference notebook
-- Open `src/notebooks/evalutation_detr.ipynb`.
-- The notebook adds the repo root to `sys.path`, loads a local checkpoint from
-  `models/detr-finetuned/` and runs inference on sample images.
-- When running outside Docker, ensure your `.venv` has the same dependencies as
-  `requirements.txt` to avoid version mismatch warnings.
+Launch `notebooks/evaluation.ipynb` to run inference on local checkpoints,
+visualize predictions and compute metrics such as mAP. The notebook assumes you
+have already fine-tuned a model and have test images available locally.
+
+When running outside of the Docker container, ensure your .venv had the same depencencies as
+requirements.txt to avoid version mismatches.
 
 ## Interactive Gradio demo
 Spin up a simple UI to upload images, tweak the score threshold and visualize
@@ -131,9 +140,39 @@ python -m src.gradio_app \
   --port 7860
 ```
 - `--checkpoint` accepts either a local directory or a Hugging Face repo id.
+- Alternatively, set the `MODEL_DIR` environment variable (for example in the
+  Hugging Face Space settings) to point at the checkpoint folder you copied into
+  the repo; it is used automatically when `--checkpoint` is not provided.
 - Provide `--share` if you want Gradio to expose a temporary public URL.
 - Sample wildlife photos are auto-detected from `data/images/test/` when
   available so you can demo the model without uploading your own files.
+
+### Deploying to Hugging Face Spaces
+The repository contains multi-gigabyte folders (`data/`, `models/`, `docker/`)
+that should not be pushed to a Space. Use the helper script below to create a
+trimmed-down copy that only contains the Gradio app, dependencies, label map and
+a few sample images:
+```bash
+python scripts/prepare_space_upload.py
+cd build/hf_space
+source ../../.venv/bin/activate
+gradio deploy --title animal-spotter --app-file src/gradio_app.py
+```
+- The script copies `src/`, `pyproject.toml`, `README.md`,
+  `data/processed/classes.yaml`, a slimmed-down dependency list, and up to four
+  `data/images/test/` files (tweak `--example-limit` to change the quota).
+- `requirements.space.txt` holds the slim dependency set needed by the remote
+  Space and is copied into the staging folder as `requirements.txt`. Extend it
+  if the deployment requires extra packages.
+- Add any extra assets (for example a fine-tuned checkpoint under
+  `models/detr-finetuned/`) **inside** `build/hf_space` before running
+  `gradio deploy`. Only the files needed for inference are copied:
+  `config.json`, `model.safetensors`, and `preprocessor_config.json`.
+- After copying your checkpoint, set the `MODEL_DIR` environment variable in the
+  Space (Settings → Variables & secrets) to `models/detr-finetuned` so the Gradio
+  app loads it automatically.
+- GitHub Actions can keep the Space in sync once you add your `hf_token` secret
+  to the workflow created by `gradio deploy`.
 
 ---
 

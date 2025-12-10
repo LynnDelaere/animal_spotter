@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
@@ -144,6 +145,8 @@ def build_interface(
     """Construct the Blocks layout with inputs, controls and results."""
     predict_fn = build_predict_fn(service)
     examples = _discover_examples(limit=4)
+    class_labels = service.list_classes()
+    classes_md = "\n".join(f"- {label}" for label in class_labels) or "_Unavailable_"
 
     with gr.Blocks(title="Animal Spotter Demo") as demo:
         gr.Markdown(
@@ -151,6 +154,11 @@ def build_interface(
             "Upload an image (or pick one below) to run the DETR detector and "
             "visualize the predicted bounding boxes."
         )
+        with gr.Accordion("Detected classes", open=False):
+            gr.Markdown(
+                "The model has been trained to identify the following labels:\n"
+                f"{classes_md}"
+            )
 
         with gr.Row():
             with gr.Column(scale=2):
@@ -257,8 +265,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """CLI entry point to initialize the model service and launch Gradio."""
     args = parse_args()
+    checkpoint = args.checkpoint or os.getenv("MODEL_DIR")
     service = ModelService(
-        checkpoint=args.checkpoint,
+        checkpoint=checkpoint,
         score_threshold=args.score_threshold,
         max_detections=args.max_detections,
     )
