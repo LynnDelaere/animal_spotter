@@ -1,0 +1,22 @@
+.git/
+.venv/
+.gradio/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/
+**/.cache/
+
+logs/
+notebooks/
+data/
+models/
+
+# Skip Docker runner artifacts that include forbidden .cache folders
+docker/github-runner/
+docker/github-runner/**
+docker/**
+
+# Exclude development configs not required for the Space
+.github/
+.dockerignore

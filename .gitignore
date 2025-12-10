@@ -9,3 +9,6 @@ data/*
 models/*
 logs/*
 docker/github-runner/runner-data/
+docker/.env
+build/
+.gradio/
