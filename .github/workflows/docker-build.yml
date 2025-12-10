@@ -29,6 +29,8 @@ jobs:
     - name: Build Docker images
       env:
         CONTAINER_PREFIX: animal-spotter-ci
+        MINIO_PORT: 9500
+        MINIO_CONSOLE_PORT: 9501
       run: |
         cd docker
         docker compose -p animal-spotter-ci build --no-cache animal-spotter-minio 
@@ -36,6 +38,8 @@ jobs:
     - name: Test Docker containers start
       env:
         CONTAINER_PREFIX: animal-spotter-ci
+        MINIO_PORT: 9500
+        MINIO_CONSOLE_PORT: 9501
       run: |
         cd docker
         docker compose -p animal-spotter-ci up -d animal-spotter-minio 
