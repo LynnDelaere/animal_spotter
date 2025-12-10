@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import src.evaluation.evaluate_detr as eval_mod
 import torch
 import torch.nn.functional as F
 from PIL import Image
+from transformers import DetrForObjectDetection, DetrImageProcessor
 
 
 class DummyProcessor:
@@ -57,7 +58,7 @@ def test_test_image_dataset_returns_expected_payload(tmp_path: Path) -> None:
     img_dir.mkdir()
     create_test_image(img_dir, image_name)
     annotation_file = create_coco_file(tmp_path, image_name)
-    processor = DummyProcessor()
+    processor = cast(DetrImageProcessor, DummyProcessor())
 
     dataset = eval_mod.TestImageDataset(img_dir, annotation_file, processor)
 
@@ -94,7 +95,7 @@ class DummyPaddingProcessor(DummyProcessor):
 
 def test_collate_test_batch_pads_and_collects_metadata() -> None:
     """collate_test_batch should rely on the processor for padding."""
-    processor = DummyPaddingProcessor()
+    processor = cast(DetrImageProcessor, DummyPaddingProcessor())
     batch = [
         {
             "pixel_values": torch.ones(3, 4, 4),
@@ -150,7 +151,7 @@ class DummyPostProcessor(DummyPaddingProcessor):
 
 def test_post_process_batch_filters_and_formats_predictions() -> None:
     """_post_process_batch should drop low scoring boxes and convert to xywh."""
-    processor = DummyPostProcessor()
+    processor = cast(DetrImageProcessor, DummyPostProcessor())
     target_sizes = torch.tensor([[12, 34], [12, 34]], dtype=torch.float32)
     outputs = {"logits": torch.zeros(1)}
 
@@ -199,12 +200,12 @@ class FakeDataLoader:
         dataset: Any,
         batch_size: int,
         shuffle: bool,
-        collate_fn,
+        collate_fn: Any,
     ) -> None:
         del batch_size, shuffle
         self.batches = [collate_fn([dataset[0]])]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         return iter(self.batches)
 
 
@@ -256,8 +257,8 @@ def test_run_test_evaluation_handles_empty_predictions(
     )
     monkeypatch.setattr(eval_mod, "DataLoader", FakeDataLoader)
 
-    processor = FakeEvalProcessor()
-    model = FakeModel()
+    processor = cast(DetrImageProcessor, FakeEvalProcessor())
+    model = cast(DetrForObjectDetection, FakeModel())
 
     metrics, predictions, coco_gt = eval_mod.run_test_evaluation(
         model=model,
