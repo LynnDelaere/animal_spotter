@@ -27,14 +27,22 @@ jobs:
         docker compose -f docker/docker-compose.yml config
     
     - name: Build Docker images
+      env:
+        CONTAINER_PREFIX: animal-spotter-ci
+        MINIO_PORT: 9500
+        MINIO_CONSOLE_PORT: 9501
       run: |
         cd docker
-        docker compose build --no-cache
-    
+        docker compose -p animal-spotter-ci build --no-cache animal-spotter-minio 
+
     - name: Test Docker containers start
+      env:
+        CONTAINER_PREFIX: animal-spotter-ci
+        MINIO_PORT: 9500
+        MINIO_CONSOLE_PORT: 9501
       run: |
         cd docker
-        docker compose up -d
+        docker compose -p animal-spotter-ci up -d animal-spotter-minio 
         sleep 10
-        docker compose ps
-        docker compose down
+        docker compose -p animal-spotter-ci ps
+        docker compose -p animal-spotter-ci down

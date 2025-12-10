@@ -1,0 +1,13 @@
+# Exclude heavy or unnecessary directories from Docker build context
+.git
+.venv
+__pycache__/
+*.pyc
+
+# Large data artifacts that should not be shipped in Docker images
+data/
+logs/
+models/
+
+# Local runner/cache directories
+docker/github-runner/runner-data/
