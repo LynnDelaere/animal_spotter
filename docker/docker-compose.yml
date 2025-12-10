@@ -53,8 +53,6 @@ services:
       - ../configs:/workspace/configs
       - ../notebooks:/workspace/notebooks
       - ../tests:/workspace/tests
-      - ../requirements.txt:/workspace/requirements.txt:ro
-      - ../pyproject.toml:/workspace/pyproject.toml:ro
       - python-app-pip-cache:/root/.cache/pip
     healthcheck:
       test: ["CMD", "python", "-c", "import numpy"]
