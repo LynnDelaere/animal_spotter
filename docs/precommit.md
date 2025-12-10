@@ -54,9 +54,6 @@ mypy --ignore-missing-imports .
 - **mypy errors** → add type hints or adjust stubs; avoid `# type: ignore`
   unless justified.
 
-Running `pre-commit run --all-files` before pushing should give you the same
-results as the Code Quality GitHub Action (`quality` job).
-
 ## Troubleshooting
 - Hooks reformat files: re-add changes and re-commit.
 - Failing docstring coverage: add concise docstrings to public modules/functions/classes in `src/`.

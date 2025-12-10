@@ -47,6 +47,9 @@ no_strict_optional = false
 warn_unused_ignores = true
 show_error_codes = true
 strict_equality = true
+exclude = [
+    "docker/github-runner/runner-data/.*",
+]
 
 # Gradual strictness plan:
 # Later phases can enable: disallow_untyped_defs=true, disallow_incomplete_defs=true,
