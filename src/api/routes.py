@@ -7,8 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
-from .schemas import HealthResponse, PredictionResponse
-from .services import ModelService, get_model_service
+from .schemas import ClassesResponse, HealthResponse, PredictionResponse
+from .services import ModelServiceProtocol, provide_model_service
 
 api_router = APIRouter(
     prefix="/api",
@@ -22,10 +22,22 @@ api_router = APIRouter(
     summary="Simple readiness probe.",
 )
 async def health(
-    service: Annotated[ModelService, Depends(get_model_service)],
+    service: Annotated[ModelServiceProtocol, Depends(provide_model_service)],
 ) -> HealthResponse:
     """Return a tiny heartbeat payload for uptime trackers."""
-    return HealthResponse(status="ok", model_loaded=service.is_ready)
+    return HealthResponse(status="ok", model_loaded=service.is_ready())
+
+
+@api_router.get(
+    "/classes",
+    response_model=ClassesResponse,
+    summary="List the detection classes supported by the model.",
+)
+async def get_classes(
+    service: Annotated[ModelServiceProtocol, Depends(provide_model_service)],
+) -> ClassesResponse:
+    """Return all class labels exposed by the currently loaded checkpoint."""
+    return ClassesResponse(classes=service.list_classes())
 
 
 @api_router.post(
@@ -36,9 +48,9 @@ async def health(
 )
 async def run_prediction(
     file: Annotated[UploadFile, File(...)],
-    service: Annotated[ModelService, Depends(get_model_service)],
-    score_threshold: Annotated[float, Query(0.5, ge=0.0, le=1.0)],
-    max_detections: Annotated[int, Query(25, ge=1, le=100)],
+    service: Annotated[ModelServiceProtocol, Depends(provide_model_service)],
+    score_threshold: Annotated[float, Query(ge=0.0, le=1.0)] = 0.5,
+    max_detections: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> PredictionResponse:
     """Accept an image upload and run the DETR model inference."""
     contents = await file.read()

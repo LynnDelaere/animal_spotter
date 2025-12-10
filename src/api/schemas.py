@@ -30,3 +30,9 @@ class HealthResponse(BaseModel):
 
     status: str
     model_loaded: bool
+
+
+class ClassesResponse(BaseModel):
+    """List of class labels the model can predict."""
+
+    classes: list[str]

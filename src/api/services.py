@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from io import BytesIO
+from typing import Protocol
 
 import torch
 from PIL import Image, UnidentifiedImageError
@@ -13,7 +13,28 @@ from ..evaluation.evaluate_detr import load_model
 from .schemas import Detection
 
 
-class ModelService:
+class ModelServiceProtocol(Protocol):
+    """Contract describing the minimal interface for inference services."""
+
+    def is_ready(self) -> bool:
+        """True once the model weights live in memory."""
+        ...
+
+    def predict(
+        self,
+        image_bytes: bytes,
+        score_threshold: float | None = None,
+        max_detections: int | None = None,
+    ) -> list[Detection]:
+        """Run inference and return structured detections."""
+        ...
+
+    def list_classes(self) -> list[str]:
+        """Return the list of class labels."""
+        ...
+
+
+class ModelService(ModelServiceProtocol):
     """Lazy loader plus lightweight inference helper for DETR."""
 
     def __init__(
@@ -37,7 +58,6 @@ class ModelService:
             self._model, self._processor, self._id2label = load_model(self.checkpoint)
         return self._model, self._processor, self._id2label
 
-    @property
     def is_ready(self) -> bool:
         """True once the HF model weights are already in memory."""
         return self._model is not None
@@ -88,16 +108,25 @@ class ModelService:
 
         return detections
 
+    def list_classes(self) -> list[str]:
+        """Return the ordered list of class labels the model can predict."""
+        _, _, id2label = self._ensure_loaded()
+        return [label for _, label in sorted(id2label.items())]
 
-@lru_cache(maxsize=1)
+
 def get_model_service(
     checkpoint: str | None = None,
     score_threshold: float = 0.5,
     max_detections: int = 25,
-) -> ModelService:
+) -> ModelServiceProtocol:
     """Return a memoized ModelService instance for FastAPI."""
     return ModelService(
         checkpoint=checkpoint,
         score_threshold=score_threshold,
         max_detections=max_detections,
     )
+
+
+def provide_model_service() -> ModelServiceProtocol:
+    """Default dependency wrapper that hides configuration knobs from FastAPI docs."""
+    return get_model_service()
