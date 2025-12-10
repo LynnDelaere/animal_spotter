@@ -6,6 +6,7 @@ import argparse
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 import gradio as gr
 from PIL import Image, ImageDraw, ImageFont
@@ -70,21 +71,29 @@ def _draw_boxes(
     annotated = image.copy()
     draw = ImageDraw.Draw(annotated)
     font = ImageFont.load_default(size=20)
+    width, height = annotated.width, annotated.height
     for x_min, y_min, x_max, y_max, label in boxes:
-        draw.rectangle((x_min, y_min, x_max, y_max), outline="#07f5e5", width=5)
+        x1 = max(0, min(x_min, width - 1))
+        y1 = max(0, min(y_min, height - 1))
+        x2 = max(0, min(x_max, width))
+        y2 = max(0, min(y_max, height))
+        if x2 <= x1:
+            x2 = min(width, x1 + 1)
+        if y2 <= y1:
+            y2 = min(height, y1 + 1)
+
+        draw.rectangle((x1, y1, x2, y2), outline="#07f5e5", width=5)
         text_bbox = draw.textbbox((0, 0), label, font=font)
         text_w = text_bbox[2] - text_bbox[0]
         text_h = text_bbox[3] - text_bbox[1]
         padding = 8
-        bg = (
-            x_min,
-            max(y_min - text_h - 2 * padding, 0),
-            min(x_min + text_w + 2 * padding, annotated.width),
-            y_min,
-        )
-        draw.rectangle(bg, fill="#111827")
+        bg_left = max(0, min(x1, width - 1))
+        bg_right = min(width, bg_left + text_w + 2 * padding)
+        bg_top = max(0, min(y1 - text_h - 2 * padding, height - 1))
+        bg_bottom = min(height, max(y1, bg_top + text_h + 2 * padding))
+        draw.rectangle((bg_left, bg_top, bg_right, bg_bottom), fill="#111827")
         draw.text(
-            (bg[0] + padding, bg[1] + padding),
+            (bg_left + padding, bg_top + padding),
             label,
             font=font,
             fill="#fef3c7",
@@ -199,7 +208,7 @@ def build_interface(
             outputs=[annotated_output, table_output],
         )
 
-    return demo
+    return cast(gr.Blocks, demo)
 
 
 def parse_args() -> argparse.Namespace:
