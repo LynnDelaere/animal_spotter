@@ -29,12 +29,12 @@ jobs:
     - name: Build Docker images
       run: |
         cd docker
-        docker compose build --no-cache
-    
+        docker compose build --no-cache minio animal-spotter-app
+
     - name: Test Docker containers start
       run: |
         cd docker
-        docker compose up -d
+        docker compose up -d minio animal-spotter-app
         sleep 10
         docker compose ps
         docker compose down
