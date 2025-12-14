@@ -21,11 +21,11 @@ TargetSizesInput: TypeAlias = TensorType | list[tuple[Any, ...]]
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
 IMAGES_DIR = DATA_DIR / "images"
-LABELS_DIR = DATA_DIR / "processed"
+LABELS_DIR = DATA_DIR / "processed" / "v2"
 TEST_IMAGES_DIR = IMAGES_DIR / "test"
 TEST_ANNOTATIONS = LABELS_DIR / "test.json"
 CLASSES_FILE = LABELS_DIR / "classes.yaml"
-DEFAULT_MODEL_DIR = ROOT_DIR / "models" / "detr-finetuned"
+DEFAULT_MODEL_DIR = ROOT_DIR / "models" / "detr-finetuned" / "v2"
 FALLBACK_CHECKPOINT = "facebook/detr-resnet-50"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -84,10 +84,13 @@ def collate_test_batch(batch: list[dict], processor: DetrImageProcessor) -> dict
 
 
 def load_classes(
-    classes_file: Path = CLASSES_FILE,
+    classes_file: str | Path = CLASSES_FILE,
 ) -> tuple[list[str], dict[int, str], dict[str, int]]:
     """Read classes.yaml so we can map between ids and labels."""
-    with open(classes_file) as fp:
+    path = Path(classes_file)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    with open(path) as fp:
         classes: list[str] = yaml.safe_load(fp)
 
     id2label = {idx: label for idx, label in enumerate(classes)}
@@ -97,9 +100,11 @@ def load_classes(
 
 def load_model(
     checkpoint: str | Path | None = None,
+    classes_file: str | Path | None = None,
 ) -> tuple[DetrForObjectDetection, DetrImageProcessor, dict[int, str]]:
     """Load the fine-tuned checkpoint (or fall back to base DETR)."""
-    classes, id2label, label2id = load_classes()
+    classes_path = classes_file or CLASSES_FILE
+    classes, id2label, label2id = load_classes(classes_path)
 
     if checkpoint is None:
         candidate = DEFAULT_MODEL_DIR
