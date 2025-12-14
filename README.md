@@ -1,9 +1,3 @@
----
-title: animal-spotter
-app_file: src/gradio_app.py
-sdk: gradio
-sdk_version: 6.1.0
----
 # Animal Spotter
 
 Animal Spotter fine-tunes Facebook's DETR model on a curated subset of Open
