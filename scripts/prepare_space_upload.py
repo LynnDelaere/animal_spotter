@@ -14,13 +14,14 @@ DEFAULT_DEST = PROJECT_ROOT / "build" / "hf_space"
 INCLUDE_PATHS = [
     "src",
     "pyproject.toml",
-    "README.md",
 ]
 
 CLASSES_FILE = PROJECT_ROOT / "data" / "processed" / "classes.yaml"
 TEST_IMAGES_DIR = PROJECT_ROOT / "data" / "images" / "test"
 SPACE_REQUIREMENTS = PROJECT_ROOT / "requirements.space.txt"
 FALLBACK_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
+SPACE_README_TEMPLATE = PROJECT_ROOT / "README.space.md"
+DEFAULT_README = PROJECT_ROOT / "README.md"
 DEFAULT_CHECKPOINT_DIR = PROJECT_ROOT / "models" / "detr-finetuned"
 ESSENTIAL_MODEL_FILES = (
     "config.json",
@@ -128,6 +129,15 @@ def main() -> None:
         _copy_path(CLASSES_FILE, dest_root / rel)
     else:
         print("[warn] classes.yaml not found; remote app will use default labels.")
+
+    if SPACE_README_TEMPLATE.exists():
+        print("[copy] README.space.md -> README.md")
+        _copy_path(SPACE_README_TEMPLATE, dest_root / "README.md")
+    elif DEFAULT_README.exists():
+        print("[copy] README.md")
+        _copy_path(DEFAULT_README, dest_root / "README.md")
+    else:
+        print("[warn] README template missing; no README copied.")
 
     req_src = (
         SPACE_REQUIREMENTS if SPACE_REQUIREMENTS.exists() else FALLBACK_REQUIREMENTS
