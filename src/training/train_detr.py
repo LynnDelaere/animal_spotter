@@ -1,5 +1,6 @@
 """Training script for fine-tuning DETR model on animal spotter dataset."""
 
+import argparse
 from pathlib import Path
 
 import torch
@@ -19,6 +20,7 @@ DATA_DIR = ROOT_DIR / "data"
 IMAGES_DIR = DATA_DIR / "images"
 LABELS_DIR = DATA_DIR / "processed"
 LOG_DIR = ROOT_DIR / "logs"
+CONFIG_DIR = ROOT_DIR / "configs"
 
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,6 +50,34 @@ def collate_fn(batch: list[dict], processor: DetrImageProcessor) -> dict:
 # Load processor and model
 def main() -> None:
     """Main training function to fine-tune DETR model."""
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Train DETR model")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="dataset_v2.yaml",
+        help="Path to YAML config file (default: dataset_v2.yaml)",
+    )
+    args = parser.parse_args()
+
+    # Load config to get version
+    config_path = CONFIG_DIR / args.config
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    version = config.get("dataset", {}).get("version", "v1")
+
+    # Create versioned model and log directories
+    model_base_dir = ROOT_DIR / "models" / "detr-finetuned"
+    model_version_dir = model_base_dir / version
+    model_version_dir.mkdir(parents=True, exist_ok=True)
+
+    log_version_dir = LOG_DIR / version
+    log_version_dir.mkdir(parents=True, exist_ok=True)
+
     with open(LABELS_DIR / "classes.yaml") as f:
         classes = yaml.safe_load(f)
 
@@ -81,14 +111,14 @@ def main() -> None:
     model.to(device)
 
     training_args = TrainingArguments(
-        output_dir=str(ROOT_DIR / "models" / "detr-finetuned"),
+        output_dir=str(model_version_dir),
         per_device_train_batch_size=4,
         num_train_epochs=50,
         fp16=torch.cuda.is_available(),
         learning_rate=2e-5,
         warmup_steps=500,
         weight_decay=1e-4,
-        logging_dir=str(LOG_DIR),
+        logging_dir=str(log_version_dir),
         logging_strategy="steps",
         logging_steps=50,
         report_to=["tensorboard"],
@@ -113,16 +143,17 @@ def main() -> None:
     )
 
     print("Starting training...")
-    print(f"Monitor training via TensorBoard at {LOG_DIR}")
+    print(f"Monitor training via TensorBoard at {log_version_dir}")
+    print(f"Model version: {version}")
+    print(f"Config: {config_path}")
 
     trainer.train()
 
     # Save the final model
     trainer.save_model()
-    # Save processor to the same output directory (guarantee a str, not None)
-    out_dir = training_args.output_dir or str(ROOT_DIR / "models" / "detr-finetuned")
-    processor.save_pretrained(out_dir)
-    print(f"Model saved to {out_dir}")
+    # Save processor to the same output directory
+    processor.save_pretrained(str(model_version_dir))
+    print(f"Model saved to {model_version_dir}")
 
 
 if __name__ == "__main__":
