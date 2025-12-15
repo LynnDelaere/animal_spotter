@@ -1,4 +1,4 @@
-default_model: v1
+default_model: v2
 models:
   v1:
     display_name: "Animal Spotter v1"
