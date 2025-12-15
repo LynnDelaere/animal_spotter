@@ -36,3 +36,18 @@ class ClassesResponse(BaseModel):
     """List of class labels the model can predict."""
 
     classes: list[str]
+
+
+class ModelInfo(BaseModel):
+    """Metadata describing a deployed model."""
+
+    slug: str = Field(..., description="Identifier passed as the `model` query.")
+    name: str
+    description: str | None = None
+
+
+class ModelsResponse(BaseModel):
+    """Payload describing all models available on the backend."""
+
+    default_model: str
+    models: list[ModelInfo]

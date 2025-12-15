@@ -1,0 +1,12 @@
+default_model: v1
+models:
+  v1:
+    display_name: "Animal Spotter v1"
+    description: "Baseline checkpoint trained on the first dataset iteration."
+    checkpoint: "models/detr-finetuned/v1"
+    classes_file: "data/processed/v1/classes.yaml"
+  v2:
+    display_name: "Animal Spotter v2"
+    description: "Latest training run using the refreshed dataset."
+    checkpoint: "models/detr-finetuned/v2"
+    classes_file: "data/processed/v2/classes.yaml"

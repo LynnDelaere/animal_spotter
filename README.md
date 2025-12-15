@@ -25,7 +25,7 @@ an all-in-one Python dev container).
 ## Repository layout
 | Path | Description |
 | --- | --- |
-| `configs/` | Dataset definition (`dataset_v1.yaml`) controlling class filters, limits and paths. |
+| `configs/` | Dataset definitions plus the inference model catalog (`model_catalog.yaml`). |
 | `data/` | Downloaded images + metadata and COCO conversions (ignored in Git). |
 | `docs/` | Architecture, workflow, Docker and pre-commit notes. |
 | `docker/` | Compose stack (`docker-compose.yml`), service-specific Dockerfiles and `.env.example`. |
@@ -124,19 +124,42 @@ have already fine-tuned a model and have test images available locally.
 When running outside of the Docker container, ensure your .venv had the same depencencies as
 requirements.txt to avoid version mismatches.
 
+CLI fans can also leverage the catalog when running `python -m src.evaluation.evaluate_detr`:
+
+```bash
+python -m src.evaluation.evaluate_detr --model-key v2 --model-catalog configs/model_catalog.yaml
+```
+
+If `--model-dir` is omitted, the script looks up the requested slug (or the catalog default)
+to discover both the checkpoint path and the matching `classes.yaml`.
+
+## Model catalog & API selection
+Multiple checkpoints can be exposed simultaneously. The list of deployed models is defined
+in `configs/model_catalog.yaml` (override the path with the `MODEL_CATALOG` environment
+variable). Each entry specifies a slug, display name, checkpoint path or Hugging Face repo
+ID, the `classes.yaml` file to use, and default inference parameters.
+
+- `GET /api/models` returns the catalog the API loaded (including the default slug).
+- Pass the `model=<slug>` query parameter to `/api/predictions` and `/api/classes` to pick
+  a specific checkpoint per request.
+- If a catalog is not provided, the backend falls back to `MODEL_DIR` (and optionally
+  `MODEL_CLASSES_FILE`) for single-model deployments.
+
 ## Interactive Gradio demo
 Spin up a simple UI to upload images, tweak the score threshold and visualize
 boxes with an annotated preview plus a detections table:
 ```bash
 python -m src.gradio_app \
-  --checkpoint models/detr-finetuned \
+  --model-catalog configs/model_catalog.yaml \
   --host 0.0.0.0 \
   --port 7860
 ```
-- `--checkpoint` accepts either a local directory or a Hugging Face repo id.
-- Alternatively, set the `MODEL_DIR` environment variable (for example in the
-  Hugging Face Space settings) to point at the checkpoint folder you copied into
-  the repo; it is used automatically when `--checkpoint` is not provided.
+- The UI now includes a model selector that mirrors the backend catalog. Use
+  `--model-catalog` to point the CLI at a specific YAML file or `--checkpoint` to
+  force a single checkpoint (handy for quick experiments).
+- Alternatively, set the `MODEL_CATALOG` environment variable (or fall back to
+  `MODEL_DIR` for a single checkpoint) so the app auto-discovers the desired
+  model(s) when CLI flags are omitted.
 - Provide `--share` if you want Gradio to expose a temporary public URL.
 - Sample wildlife photos are auto-detected from `data/images/test/` when
   available so you can demo the model without uploading your own files.
@@ -152,19 +175,22 @@ cd build/hf_space
 source ../../.venv/bin/activate
 gradio deploy --title animal-spotter --app-file src/gradio_app.py
 ```
-- The script copies `src/`, `pyproject.toml`, `README.md`,
-  `data/processed/classes.yaml`, a slimmed-down dependency list, and up to four
-  `data/images/test/` files (tweak `--example-limit` to change the quota).
+- The script copies `src/`, `pyproject.toml`, `README.md`, the model catalog
+  (`configs/model_catalog.yaml`), all referenced `classes.yaml` files, a
+  slimmed-down dependency list, and up to four `data/images/test/` files
+  (tweak `--example-limit` to change the quota).
 - `requirements.space.txt` holds the slim dependency set needed by the remote
   Space and is copied into the staging folder as `requirements.txt`. Extend it
   if the deployment requires extra packages.
-- Add any extra assets (for example a fine-tuned checkpoint under
-  `models/detr-finetuned/`) **inside** `build/hf_space` before running
-  `gradio deploy`. Only the files needed for inference are copied:
-  `config.json`, `model.safetensors`, and `preprocessor_config.json`.
-- After copying your checkpoint, set the `MODEL_DIR` environment variable in the
-  Space (Settings → Variables & secrets) to `models/detr-finetuned` so the Gradio
-  app loads it automatically.
+- Minimal checkpoint assets are copied automatically for every catalog entry
+  that points at a local directory. Pass `--checkpoint` to copy an extra folder
+  that is not listed in the catalog yet.
+- Set the `MODEL_CATALOG` environment variable in the Space (or rely on the
+  default `configs/model_catalog.yaml` if you keep the relative paths) so the
+  backend and Gradio app expose the same set of models. Use `MODEL_DIR` only
+  when deploying a single checkpoint without a catalog.
+- Override `--model-catalog` if you want the staging helper to copy a catalog
+  stored outside of `configs/model_catalog.yaml`.
 - GitHub Actions can keep the Space in sync once you add your `hf_token` secret
   to the workflow created by `gradio deploy`.
 
