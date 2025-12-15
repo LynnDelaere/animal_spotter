@@ -24,7 +24,8 @@ INCLUDE_PATHS = [
     "pyproject.toml",
 ]
 
-CLASSES_FILE = PROJECT_ROOT / "data" / "processed" / "classes.yaml"
+CLASSES_DIR = PROJECT_ROOT / "data" / "processed"
+LEGACY_CLASSES_FILE = CLASSES_DIR / "classes.yaml"
 SPACE_REQUIREMENTS = PROJECT_ROOT / "requirements.space.txt"
 FALLBACK_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 SPACE_README_TEMPLATE = PROJECT_ROOT / "README.space.md"
@@ -217,8 +218,12 @@ def _copy_checkpoint_dirs(dest_root: Path, checkpoint_dirs: list[Path]) -> None:
 
 def _copy_class_files(dest_root: Path, class_files: list[Path]) -> None:
     class_candidates: list[Path] = []
-    if CLASSES_FILE.exists():
-        class_candidates.append(CLASSES_FILE)
+    if LEGACY_CLASSES_FILE.exists():
+        class_candidates.append(LEGACY_CLASSES_FILE)
+    if CLASSES_DIR.exists():
+        class_candidates.extend(
+            path for path in CLASSES_DIR.rglob("classes.yaml") if path.is_file()
+        )
     class_candidates.extend(path for path in class_files if path.exists())
 
     copied_class_files = False
