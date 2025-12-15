@@ -109,7 +109,11 @@ def _get_config_values(args: argparse.Namespace) -> tuple[str, dict | None, str 
     if args.config:
         config_path = Path(args.config)
         if not config_path.is_absolute():
-            config_path = ROOT_DIR / "configs" / config_path
+            candidate = (ROOT_DIR / config_path).resolve()
+            if candidate.exists():
+                config_path = candidate
+            else:
+                config_path = (ROOT_DIR / "configs" / config_path).resolve()
 
         if config_path.exists():
             cfg = load_config(str(config_path))
