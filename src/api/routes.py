@@ -7,8 +7,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
-from .schemas import ClassesResponse, HealthResponse, PredictionResponse
-from .services import ModelServiceProtocol, provide_model_service
+from .schemas import (
+    ClassesResponse,
+    HealthResponse,
+    ModelInfo,
+    ModelsResponse,
+    PredictionResponse,
+)
+from .services import (
+    ModelRegistry,
+    ModelServiceProtocol,
+    get_model_registry,
+    provide_model_service,
+)
 
 api_router = APIRouter(
     prefix="/api",
@@ -26,6 +37,26 @@ async def health(
 ) -> HealthResponse:
     """Return a tiny heartbeat payload for uptime trackers."""
     return HealthResponse(status="ok", model_loaded=service.is_ready())
+
+
+@api_router.get(
+    "/models",
+    response_model=ModelsResponse,
+    summary="List the available checkpoints exposed by the API.",
+)
+async def list_models(
+    registry: Annotated[ModelRegistry, Depends(get_model_registry)],
+) -> ModelsResponse:
+    """Return metadata about each model so clients can pick one."""
+    models = [
+        ModelInfo(
+            slug=entry.key,
+            name=entry.name,
+            description=entry.description,
+        )
+        for entry in registry.list()
+    ]
+    return ModelsResponse(default_model=registry.default_key, models=models)
 
 
 @api_router.get(

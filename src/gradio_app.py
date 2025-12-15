@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
@@ -19,12 +18,20 @@ if __package__ is None or __package__ == "":
     PROJECT_ROOT = Path(__file__).resolve().parents[1]
     sys.path.append(str(PROJECT_ROOT))
     from src.api.schemas import Detection
-    from src.api.services import ModelService, ModelServiceProtocol
+    from src.api.services import (
+        ModelConfigEntry,
+        ModelRegistry,
+        load_model_registry,
+    )
+    from src.demo_assets import EXAMPLE_IMAGE_PATHS
 else:  # pragma: no cover - exercised when executed as a module
     from .api.schemas import Detection
-    from .api.services import ModelService, ModelServiceProtocol
-
-TEST_IMAGES_DIR = Path("data") / "images" / "test"
+    from .api.services import (
+        ModelConfigEntry,
+        ModelRegistry,
+        load_model_registry,
+    )
+    from .demo_assets import EXAMPLE_IMAGE_PATHS
 
 
 def _image_to_bytes(image: Image.Image) -> bytes:
@@ -32,6 +39,27 @@ def _image_to_bytes(image: Image.Image) -> bytes:
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def _build_registry_from_args(
+    checkpoint: str | None,
+    catalog: str | Path | None,
+    score_threshold: float,
+    max_detections: int,
+) -> ModelRegistry:
+    """Return either a single-model registry or load the YAML catalog."""
+    if checkpoint:
+        entry = ModelConfigEntry(
+            key="custom",
+            name="Custom checkpoint",
+            description="Loaded via --checkpoint CLI flag.",
+            checkpoint=checkpoint,
+            classes_file=None,
+            score_threshold=score_threshold,
+            max_detections=max_detections,
+        )
+        return ModelRegistry(models={"custom": entry}, default_key="custom")
+    return load_model_registry(catalog)
 
 
 def _format_for_display(
@@ -103,17 +131,25 @@ def _draw_boxes(
 
 
 def build_predict_fn(
-    service: ModelServiceProtocol,
-) -> Callable[[Image.Image | None, float, int], tuple[Image.Image, list]]:
+    registry: ModelRegistry,
+) -> Callable[[Image.Image | None, str | None, float, int], tuple[Image.Image, list]]:
     """Wrap the service predict method so Gradio can call it."""
 
     def _predict(
         image: Image.Image | None,
+        model_key: str | None,
         score_threshold: float,
         max_detections: int,
     ) -> tuple[Image.Image, list]:
         if image is None:
             raise gr.Error("Upload (or pick) an image first.")
+
+        try:
+            service = registry.get(model_key)
+        except KeyError as exc:  # pragma: no cover - user interaction
+            raise gr.Error(
+                f"Unknown model '{model_key}'. Pick another option."
+            ) from exc
 
         detections = service.predict(
             _image_to_bytes(image),
@@ -127,26 +163,60 @@ def build_predict_fn(
     return _predict
 
 
-def _discover_examples(limit: int = 3) -> list[str]:
-    """Return a handful of local test images for the Examples widget."""
-    if not TEST_IMAGES_DIR.exists():
-        return []
-    candidates = [
-        str(path)
-        for path in sorted(TEST_IMAGES_DIR.iterdir())
-        if path.suffix.lower() in {".jpg", ".jpeg", ".png"}
+def _discover_examples(limit: int | None = None) -> list[Path]:
+    """Return the curated local images for the Examples widget."""
+    candidates = EXAMPLE_IMAGE_PATHS if limit is None else EXAMPLE_IMAGE_PATHS[:limit]
+    return [path for path in candidates if path.exists()]
+
+
+def _model_info_with_classes(
+    registry: ModelRegistry, model_key: str | None
+) -> tuple[ModelConfigEntry | None, list[str]]:
+    """Return the model config plus its class labels (if available)."""
+    try:
+        config = registry.get_config(model_key)
+        service = registry.get(config.key)
+    except KeyError:
+        return None, []
+    return config, service.list_classes()
+
+
+def _classes_for_model(registry: ModelRegistry, model_key: str | None) -> str:
+    """Return the Markdown snippet describing classes for a given slug."""
+    config, classes = _model_info_with_classes(registry, model_key)
+    if not config:
+        return "No model selected."
+    if not classes:
+        return "No class labels available for this model."
+    md_lines = [
+        f"**Model '{config.name}' classes ({len(classes)} total):**",
+        "",
+        "```",
     ]
-    return candidates[:limit]
+    md_lines.extend(f"- {label}" for label in classes)
+    md_lines.append("```")
+    return "\n".join(md_lines)
 
 
 def build_interface(
-    service: ModelServiceProtocol,
+    registry: ModelRegistry,
 ) -> gr.Blocks:
     """Construct the Blocks layout with inputs, controls and results."""
-    predict_fn = build_predict_fn(service)
-    examples = _discover_examples(limit=4)
-    class_labels = service.list_classes()
-    classes_md = "\n".join(f"- {label}" for label in class_labels) or "_Unavailable_"
+    predict_fn = build_predict_fn(registry)
+    examples = _discover_examples()
+    default_config = registry.get_config(None)
+    default_key = default_config.key
+    default_score = default_config.score_threshold
+    default_limit = default_config.max_detections
+    classes_md = _classes_for_model(registry, default_key)
+    model_entries = registry.list()
+    model_choices = [entry.key for entry in model_entries]
+    models_summary = " | ".join(
+        f"{entry.name} ({entry.key})" for entry in model_entries
+    )
+
+    def _update_class_widgets(selected_key: str | None) -> str:
+        return _classes_for_model(registry, selected_key)
 
     with gr.Blocks(title="Animal Spotter Demo") as demo:
         gr.Markdown(
@@ -154,11 +224,14 @@ def build_interface(
             "Upload an image (or pick one below) to run the DETR detector and "
             "visualize the predicted bounding boxes."
         )
-        with gr.Accordion("Detected classes", open=False):
-            gr.Markdown(
-                "The model has been trained to identify the following labels:\n"
-                f"{classes_md}"
-            )
+        model_dropdown = gr.Dropdown(
+            label="Model checkpoint",
+            info=models_summary or None,
+            choices=model_choices,
+            value=default_key,
+        )
+        with gr.Accordion("Classes", open=False):
+            classes_panel = gr.Markdown(classes_md)
 
         with gr.Row():
             with gr.Column(scale=2):
@@ -172,22 +245,14 @@ def build_interface(
                     minimum=0.05,
                     maximum=0.95,
                     step=0.05,
-                    value=(
-                        service.score_threshold
-                        if isinstance(service, ModelService)
-                        else 0.5
-                    ),
+                    value=default_score,
                 )
                 limit_slider = gr.Slider(
                     label="Max detections",
                     minimum=1,
                     maximum=100,
                     step=1,
-                    value=(
-                        service.max_detections
-                        if isinstance(service, ModelService)
-                        else 25
-                    ),
+                    value=default_limit,
                 )
                 run_btn = gr.Button("Run detection", variant="primary")
                 if examples:
@@ -212,8 +277,13 @@ def build_interface(
 
         run_btn.click(
             predict_fn,
-            inputs=[image_input, score_slider, limit_slider],
+            inputs=[image_input, model_dropdown, score_slider, limit_slider],
             outputs=[annotated_output, table_output],
+        )
+        model_dropdown.change(
+            _update_class_widgets,
+            inputs=model_dropdown,
+            outputs=classes_panel,
         )
 
     return cast(gr.Blocks, demo)
@@ -229,6 +299,15 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Optional local path or HF repo id for the DETR checkpoint.",
+    )
+    parser.add_argument(
+        "--model-catalog",
+        type=str,
+        default=None,
+        help=(
+            "Path to a YAML file describing available checkpoints "
+            "(defaults to configs/model_catalog.yaml when present)."
+        ),
     )
     parser.add_argument(
         "--score-threshold",
@@ -265,13 +344,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """CLI entry point to initialize the model service and launch Gradio."""
     args = parse_args()
-    checkpoint = args.checkpoint or os.getenv("MODEL_DIR")
-    service = ModelService(
-        checkpoint=checkpoint,
+    registry = _build_registry_from_args(
+        checkpoint=args.checkpoint,
+        catalog=args.model_catalog,
         score_threshold=args.score_threshold,
         max_detections=args.max_detections,
     )
-    app = build_interface(service)
+    app = build_interface(registry)
     app.launch(server_name=args.host, server_port=args.port, share=args.share)
 
 
