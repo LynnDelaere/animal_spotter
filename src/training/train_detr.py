@@ -5,7 +5,6 @@ from pathlib import Path
 
 import torch
 import yaml
-from dataset_class import AnimalSpotterDataset
 from transformers import (
     DetrForObjectDetection,
     DetrImageProcessor,
@@ -13,6 +12,8 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+
+from .dataset_class import AnimalSpotterDataset
 
 # Configure paths
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -25,6 +26,23 @@ CONFIG_DIR = ROOT_DIR / "configs"
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
+
+
+def resolve_path(path_value: str | None, default: Path) -> Path:
+    """Return an absolute path based on config input or fallback default."""
+    if not path_value:
+        return default
+    path = Path(path_value)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    return path
+
+
+def ensure_exists(path: Path, description: str) -> Path:
+    """Ensure a path exists and return it, otherwise throw a helpful error."""
+    if not path.exists():
+        raise FileNotFoundError(f"{description} not found at {path}")
+    return path
 
 
 # Collate function to handle variable image size
@@ -60,15 +78,46 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Load config to get version
-    config_path = CONFIG_DIR / args.config
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+    # Load config to get version (support absolute or relative paths)
+    config_arg = Path(args.config)
+    config_candidates = (
+        [config_arg]
+        if config_arg.is_absolute()
+        else [ROOT_DIR / config_arg, CONFIG_DIR / config_arg]
+    )
+
+    for path in config_candidates:
+        if path.exists():
+            config_path = path
+            break
+    else:
+        raise FileNotFoundError(f"Config file not found. Tried: {config_candidates}")
 
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
     version = config.get("dataset", {}).get("version", "v1")
+
+    paths_config = config.get("paths", {})
+    data_dir = resolve_path(paths_config.get("raw_dir"), DATA_DIR)
+    images_base_dir = resolve_path(paths_config.get("images_dir"), data_dir / "images")
+    processed_dir = resolve_path(
+        paths_config.get("processed_dir"), data_dir / "processed"
+    )
+
+    versioned_processed_dir = processed_dir / version
+    if versioned_processed_dir.exists():
+        labels_dir = versioned_processed_dir
+    else:
+        labels_dir = processed_dir
+    ensure_exists(labels_dir, "Processed dataset directory")
+
+    versioned_images_dir = images_base_dir / version
+    if versioned_images_dir.exists():
+        images_dir = versioned_images_dir
+    else:
+        images_dir = images_base_dir
+    ensure_exists(images_dir, "Images base directory")
 
     # Create versioned model and log directories
     model_base_dir = ROOT_DIR / "models" / "detr-finetuned"
@@ -78,8 +127,16 @@ def main() -> None:
     log_version_dir = LOG_DIR / version
     log_version_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(LABELS_DIR / "classes.yaml") as f:
-        classes = yaml.safe_load(f)
+    classes_path = labels_dir / "classes.yaml"
+    if classes_path.exists():
+        with open(classes_path) as f:
+            classes = yaml.safe_load(f)
+    else:
+        classes = config.get("dataset", {}).get("classes")
+        if not classes:
+            raise FileNotFoundError(
+                "Could not locate classes.yaml and no classes defined in config."
+            )
 
     id2label = {i: label for i, label in enumerate(classes)}
     label2id = {label: i for i, label in enumerate(classes)}
@@ -89,15 +146,24 @@ def main() -> None:
     checkpoint = "facebook/detr-resnet-50"
     processor = DetrImageProcessor.from_pretrained(checkpoint)
 
+    train_images_dir = ensure_exists(images_dir / "train", "Training images directory")
+    val_images_dir = ensure_exists(
+        images_dir / "validation", "Validation images directory"
+    )
+    train_annotations = ensure_exists(labels_dir / "train.json", "Training annotations")
+    val_annotations = ensure_exists(
+        labels_dir / "validation.json", "Validation annotations"
+    )
+
     train_dataset = AnimalSpotterDataset(
-        img_folder=IMAGES_DIR / "train",
-        annotation_file=LABELS_DIR / "train.json",
+        img_folder=train_images_dir,
+        annotation_file=train_annotations,
         processor=processor,
     )
 
     val_dataset = AnimalSpotterDataset(
-        img_folder=IMAGES_DIR / "validation",
-        annotation_file=LABELS_DIR / "validation.json",
+        img_folder=val_images_dir,
+        annotation_file=val_annotations,
         processor=processor,
     )
 
